@@ -3500,7 +3500,8 @@ function updatePaperSize() {
                 const tokens = remainingHTML.match(/(<[^>]+>|[^<])/g) || [];
                 let fitCount = tokens.length;
                 
-                const tolerance = config.baseFontSize * 0.3; // Safari対策: はみ出し判定を厳しめに
+                // Safari対策: やや緩めの許容範囲（厳しすぎると1行欠けるため）
+                const tolerance = Math.max(config.baseFontSize * 0.6, config.lineGap * 0.5);
 
                 while (fitCount > 0) {
                     const tryHTML = tokens.slice(0, fitCount).join(''); measureBox.innerHTML = tryHTML;
