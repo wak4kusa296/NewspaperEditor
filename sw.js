@@ -1,7 +1,10 @@
 const CACHE_NAME = 'shinbun-pwa-v1';
 const ASSETS = [
-  './NewsEditer.HTML',
-  './manifest.webmanifest'
+  './index.HTML',
+  './manifest.webmanifest',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon-180.png'
 ];
 
 self.addEventListener('install', (event) => {
