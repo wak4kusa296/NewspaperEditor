@@ -249,13 +249,21 @@
     text-overflow: ellipsis;
     font-size: 12px;
   }
-  .val { 
-    width: 40px; 
-    text-align: right; 
-    color: var(--ui-text); 
-    font-weight: 600; 
+  .val {
+    width: 50px;
+    text-align: right;
+    color: var(--ui-text);
+    font-weight: 600;
     white-space: nowrap;
     font-size: 12px;
+    background: var(--ui-panel-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 3px;
+    padding: 2px 4px;
+  }
+  .val:focus {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 0;
   }
   .calc-info { 
     font-size: 11px; 
@@ -542,6 +550,7 @@ body.preview-mode .article-group { background-color: transparent; }
     width: 100%;
     height: 100%;
     box-sizing: border-box;
+    pointer-events: none;
   }
   .free-text-content {
     color: var(--text-color);
@@ -549,9 +558,9 @@ body.preview-mode .article-group { background-color: transparent; }
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: break-word;
-    pointer-events: none;
     max-width: 100%;
     max-height: 100%;
+    pointer-events: none;
   }
 
   .resize-handle {
@@ -589,7 +598,7 @@ body.preview-mode .article-group { background-color: transparent; }
   }
   .headline-v { writing-mode: vertical-rl; transform-origin: top right; right: 0; left: auto; }
   .headline-h { writing-mode: horizontal-tb; transform-origin: top left; }
-  .tcy { text-combine-upright: all; text-decoration: none; }
+  .tcy { text-combine-upright: all; text-decoration: none; pointer-events: none; }
 
   .correction-box { width: 100%; height: 100%; pointer-events: none; }
   .correction-inner { width: 100%; height: 100%; }
@@ -745,13 +754,20 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   /* テキストエディタ用 */
-  #editor-panel { width: 400px; }
+  #editor-panel {
+    width: 90vw;
+    max-width: 600px;
+  }
   #editor-textarea {
-    width: 100%; height: 120px; 
-    background: var(--ui-bg); 
-    color: var(--ui-text); 
+    width: 100%;
+    height: 200px;
+    min-height: 200px;
+    background: var(--ui-bg);
+    color: var(--ui-text);
     border: 1px solid var(--ui-border);
-    padding: 10px; font-size: 14px; 
+    padding: 12px;
+    font-size: 16px;
+    box-sizing: border-box; 
     border-radius: 0; resize: vertical; outline: none;
     font-family: inherit;
   }
@@ -1008,17 +1024,17 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row">
         <label>段数</label>
         <input type="range" id="paper-dan-count" min="1" max="15" step="1" value="8" oninput="updatePaperConfigInternal()">
-        <span id="val-paper-dan-count" class="val">8</span>
+        <input type="number" id="val-paper-dan-count" class="val" value="8" min="1" max="15" step="1" oninput="syncInputValue('val-paper-dan-count','paper-dan-count'); updatePaperConfigInternal()">
     </div>
     <div class="ui-row">
         <label>1段の行数</label>
         <input type="range" id="paper-rows-per-dan" min="10" max="100" step="1" value="40" oninput="updatePaperConfigInternal()">
-        <span id="val-paper-rows-per-dan" class="val">40</span>
+        <input type="number" id="val-paper-rows-per-dan" class="val" value="40" min="10" max="100" step="1" oninput="syncInputValue('val-paper-rows-per-dan','paper-rows-per-dan'); updatePaperConfigInternal()">
     </div>
     <div class="ui-row">
         <label>1行の文字数</label>
         <input type="range" id="paper-chars-per-dan" min="5" max="30" step="1" value="11" oninput="updatePaperConfigInternal()">
-        <span id="val-paper-chars-per-dan" class="val">11</span>
+        <input type="number" id="val-paper-chars-per-dan" class="val" value="11" min="5" max="30" step="1" oninput="syncInputValue('val-paper-chars-per-dan','paper-chars-per-dan'); updatePaperConfigInternal()">
     </div>
 
     <div class="ui-header">余白</div>
@@ -1047,15 +1063,15 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row"><label>フォント</label><select id="marg-font" class="font-selector" onchange="updateMarginaliaConfig()"></select></div>
     <div class="ui-row">
         <label>サイズ</label><input type="range" id="marg-size" min="5" max="32" value="12" oninput="updateMarginaliaConfig()">
-        <span id="val-marg-size" class="val">12</span>
+        <input type="number" id="val-marg-size" class="val" value="12" min="5" max="32" step="1" oninput="syncInputValue('val-marg-size','marg-size'); updateMarginaliaConfig()">
     </div>
     <div class="ui-row">
         <label>太さ</label><input type="range" id="marg-weight" min="100" max="900" step="100" value="400" oninput="updateMarginaliaConfig()">
-        <span id="val-marg-weight" class="val">400</span>
+        <input type="number" id="val-marg-weight" class="val" value="400" min="100" max="900" step="100" oninput="syncInputValue('val-marg-weight','marg-weight'); updateMarginaliaConfig()">
     </div>
     <div class="ui-row">
         <label>字間</label><input type="range" id="marg-spacing" min="0" max="20" value="2" step="0.5" oninput="updateMarginaliaConfig()">
-        <span id="val-marg-spacing" class="val">2</span>
+        <input type="number" id="val-marg-spacing" class="val" value="2" min="0" max="20" step="0.5" oninput="syncInputValue('val-marg-spacing','marg-spacing'); updateMarginaliaConfig()">
     </div>
 
     <!-- グローバル側の本文位置調整は記事パネルへ移設 -->
@@ -1067,8 +1083,8 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row"><label>インク色</label><input type="color" id="inp-text-color" value="#111111" oninput="updateColors()"></div>
     
     <div class="ui-header">罫線</div>
-    <div class="ui-row"><label>段間</label><input type="range" min="0.1" max="5" step="0.1" value="1.0" id="inp-divider-width" oninput="updateColors()"><span id="val-divider-width" class="val">1.0</span></div>
-    <div class="ui-row"><label>外周枠</label><input type="range" min="0.1" max="5" step="0.1" value="1.0" id="inp-border-width" oninput="updateColors()"><span id="val-border-width" class="val">1.0</span></div>
+    <div class="ui-row"><label>段間</label><input type="range" min="0.1" max="5" step="0.1" value="1.0" id="inp-divider-width" oninput="updateColors()"><input type="number" id="val-divider-width" class="val" value="1.0" min="0.1" max="5" step="0.1" oninput="syncInputValue('val-divider-width','inp-divider-width'); updateColors()"></div>
+    <div class="ui-row"><label>外周枠</label><input type="range" min="0.1" max="5" step="0.1" value="1.0" id="inp-border-width" oninput="updateColors()"><input type="number" id="val-border-width" class="val" value="1.0" min="0.1" max="5" step="0.1" oninput="syncInputValue('val-border-width','inp-border-width'); updateColors()"></div>
     
   </div>
 
@@ -1099,9 +1115,9 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row">
       <label>太さ</label>
       <input type="range" min="100" max="900" step="100" value="400" id="inp-font-weight" oninput="updateVisuals()">
-      <span id="val-font-weight" class="val">400</span>
+      <input type="number" id="val-font-weight" class="val" value="400" min="100" max="900" step="100" oninput="syncInputValue('val-font-weight','inp-font-weight'); updateVisuals()">
     </div>
-    <div class="ui-row"><label>字形倍率</label><input type="range" min="0.5" max="1.5" step="0.01" value="1.0" id="inp-glyph-scale" oninput="updateVisuals()"><span id="val-glyph-scale" class="val">1.0</span></div>
+    <div class="ui-row"><label>字形倍率</label><input type="range" min="0.5" max="1.5" step="0.01" value="1.0" id="inp-glyph-scale" oninput="updateVisuals()"><input type="number" id="val-glyph-scale" class="val" value="1.0" min="0.5" max="1.5" step="0.01" oninput="syncInputValue('val-glyph-scale','inp-glyph-scale'); updateVisuals()"></div>
 
     <div class="ui-header">ボックス操作</div>
     <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
@@ -1130,12 +1146,12 @@ body.preview-mode .article-group { background-color: transparent; }
         <div class="ui-row">
             <label style="width:70px">コントラスト</label>
             <input type="range" min="0.5" max="3.0" step="0.1" value="1.0" id="img-contrast" oninput="updateImageAttr()">
-            <span id="val-img-contrast" class="val" style="font-size:11px; width:30px;">1.0</span>
+            <input type="number" id="val-img-contrast" class="val" style="font-size:11px; width:50px;" value="1.0" min="0.5" max="3.0" step="0.1" oninput="syncInputValue('val-img-contrast','img-contrast'); updateImageAttr()">
         </div>
         <div class="ui-row">
             <label style="width:70px">明るさ</label>
             <input type="range" min="-1.0" max="1.0" step="0.1" value="0.0" id="img-brightness" oninput="updateImageAttr()">
-            <span id="val-img-brightness" class="val" style="font-size:11px; width:30px;">0.0</span>
+            <input type="number" id="val-img-brightness" class="val" style="font-size:11px; width:50px;" value="0.0" min="-1.0" max="1.0" step="0.1" oninput="syncInputValue('val-img-brightness','img-brightness'); updateImageAttr()">
         </div>
         <div class="calc-info">※明度に合わせて自動反転</div>
     </div>
@@ -1184,12 +1200,12 @@ body.preview-mode .article-group { background-color: transparent; }
     </div>
     
     <div class="ui-header">デザイン</div>
-    <div class="ui-row"><label>外枠</label><input type="range" min="0" max="10" value="4" id="hdr-border-out" oninput="updateHeaderAttr()"></div>
-    <div class="ui-row"><label>内枠</label><input type="range" min="0" max="10" value="1" id="hdr-border-in" oninput="updateHeaderAttr()"></div>
-    
+    <div class="ui-row"><label>外枠</label><input type="range" min="0" max="10" value="4" id="hdr-border-out" oninput="updateHeaderAttr()"><input type="number" id="val-hdr-border-out" class="val" value="4" min="0" max="10" step="1" oninput="syncInputValue('val-hdr-border-out','hdr-border-out'); updateHeaderAttr()"></div>
+    <div class="ui-row"><label>内枠</label><input type="range" min="0" max="10" value="1" id="hdr-border-in" oninput="updateHeaderAttr()"><input type="number" id="val-hdr-border-in" class="val" value="1" min="0" max="10" step="1" oninput="syncInputValue('val-hdr-border-in','hdr-border-in'); updateHeaderAttr()"></div>
+
     <div class="ui-header">装飾</div>
     <div class="ui-row"><label>文字反転</label><input type="checkbox" id="hdr-text-inverted" onchange="updateHeaderAttr()"></div>
-    <div class="ui-row"><label>フチ太さ</label><input type="range" min="0" max="20" step="0.5" value="0" id="hdr-text-stroke" oninput="updateHeaderAttr()"></div>
+    <div class="ui-row"><label>フチ太さ</label><input type="range" min="0" max="20" step="0.5" value="0" id="hdr-text-stroke" oninput="updateHeaderAttr()"><input type="number" id="val-hdr-text-stroke" class="val" value="0" min="0" max="20" step="0.5" oninput="syncInputValue('val-hdr-text-stroke','hdr-text-stroke'); updateHeaderAttr()"></div>
 
     <div class="ui-header">題字位置</div>
     <div class="nudge-pad">
@@ -1202,8 +1218,8 @@ body.preview-mode .article-group { background-color: transparent; }
       <button class="nudge-btn" onclick="nudgeHeaderTitle(0, 1)">▼</button>
     </div>
 
-    <div class="ui-row"><label>余白(上下)</label><input type="range" min="0" max="100" value="10" id="hdr-pad-v" oninput="updateHeaderAttr()"></div>
-    <div class="ui-row"><label>余白(左右)</label><input type="range" min="0" max="100" value="5" id="hdr-pad-h" oninput="updateHeaderAttr()"></div>
+    <div class="ui-row"><label>余白(上下)</label><input type="range" min="0" max="100" value="10" id="hdr-pad-v" oninput="updateHeaderAttr()"><input type="number" id="val-hdr-pad-v" class="val" value="10" min="0" max="100" step="1" oninput="syncInputValue('val-hdr-pad-v','hdr-pad-v'); updateHeaderAttr()"></div>
+    <div class="ui-row"><label>余白(左右)</label><input type="range" min="0" max="100" value="5" id="hdr-pad-h" oninput="updateHeaderAttr()"><input type="number" id="val-hdr-pad-h" class="val" value="5" min="0" max="100" step="1" oninput="syncInputValue('val-hdr-pad-h','hdr-pad-h'); updateHeaderAttr()"></div>
 
     <div class="ui-header">枠位置</div>
     <div class="nudge-pad">
@@ -1236,8 +1252,8 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row"><label>白黒反転</label><input type="checkbox" id="hl-inverted" onchange="updateHeadlineAttr()"></div>
     <div class="ui-row"><label>フォント</label><select id="hl-font" class="font-selector" onchange="updateHeadlineAttr()"></select></div>
     <div class="ui-row"><label>太さ</label><select id="hl-weight" onchange="updateHeadlineAttr()"><option value="400">標準</option><option value="700" selected>太字</option><option value="900">極太</option></select></div>
-    <div class="ui-row"><label>余白(長辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-long" oninput="updateHeadlineAttr()"><span id="val-hl-pad-long" class="val">0</span></div>
-    <div class="ui-row"><label>余白(短辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-short" oninput="updateHeadlineAttr()"><span id="val-hl-pad-short" class="val">0</span></div>
+    <div class="ui-row"><label>余白(長辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-long" oninput="updateHeadlineAttr()"><input type="number" id="val-hl-pad-long" class="val" value="0" min="0" max="50" step="1" oninput="syncInputValue('val-hl-pad-long','hl-pad-long'); updateHeadlineAttr()"></div>
+    <div class="ui-row"><label>余白(短辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-short" oninput="updateHeadlineAttr()"><input type="number" id="val-hl-pad-short" class="val" value="0" min="0" max="50" step="1" oninput="syncInputValue('val-hl-pad-short','hl-pad-short'); updateHeadlineAttr()"></div>
 
     <div class="ui-header">ボックス操作</div>
     <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
@@ -1256,7 +1272,7 @@ body.preview-mode .article-group { background-color: transparent; }
       <button class="nudge-btn" onclick="nudgeSelection(0, 1)">▼</button>
     </div>
     <div class="ui-header">太さ</div>
-    <div class="ui-row"><label>線の太さ</label><input type="range" min="1" max="10" step="1" value="2" id="vl-width" oninput="updateVlineAttr()"><span id="val-vl-width" class="val">2</span></div>
+    <div class="ui-row"><label>線の太さ</label><input type="range" min="1" max="10" step="1" value="2" id="vl-width" oninput="updateVlineAttr()"><input type="number" id="val-vl-width" class="val" value="2" min="1" max="10" step="1" oninput="syncInputValue('val-vl-width','vl-width'); updateVlineAttr()"></div>
 
     <div class="ui-header">ボックス操作</div>
     <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
@@ -1296,7 +1312,7 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row">
         <label>太さ</label>
         <input type="range" min="0" max="10" step="0.5" value="2" id="corr-border-width" oninput="updateCorrectionAttr()">
-        <span id="val-corr-border-width" class="val">2</span>
+        <input type="number" id="val-corr-border-width" class="val" value="2" min="0" max="10" step="0.5" oninput="syncInputValue('val-corr-border-width','corr-border-width'); updateCorrectionAttr()">
     </div>
     <div class="calc-info">左右は行間ぶんの余白を確保します</div>
 
@@ -1314,17 +1330,30 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row">
       <label>太さ</label>
       <input type="range" min="100" max="900" step="100" value="400" id="ft-weight" oninput="updateFreeTextAttr()">
-      <span id="val-ft-weight" class="val">400</span>
+      <input type="number" id="val-ft-weight" class="val" value="400" min="100" max="900" step="100" oninput="syncInputValue('val-ft-weight','ft-weight'); updateFreeTextAttr()">
     </div>
     <div class="ui-row">
       <label>サイズ</label>
-      <input type="range" min="8" max="96" step="1" value="24" id="ft-size" oninput="updateFreeTextAttr()">
-      <span id="val-ft-size" class="val">24</span>
+      <input type="range" min="8" max="1000" step="1" value="24" id="ft-size" oninput="updateFreeTextAttr()">
+      <input type="number" id="val-ft-size" class="val" value="24" min="8" max="1000" step="1" oninput="syncInputValue('val-ft-size','ft-size'); updateFreeTextAttr()">
     </div>
     <div class="ui-row">
       <label>字間</label>
       <input type="range" min="-5" max="20" step="0.5" value="0" id="ft-letter" oninput="updateFreeTextAttr()">
-      <span id="val-ft-letter" class="val">0</span>
+      <input type="number" id="val-ft-letter" class="val" value="0" min="-5" max="20" step="0.5" oninput="syncInputValue('val-ft-letter','ft-letter'); updateFreeTextAttr()">
+    </div>
+    <div class="ui-row">
+      <label>スタイル</label>
+      <select id="ft-style" onchange="updateFreeTextAttr()">
+        <option value="ink">インク色</option>
+        <option value="paper">紙色</option>
+        <option value="outline">袋文字</option>
+      </select>
+    </div>
+    <div class="ui-row">
+      <label>枠太さ</label>
+      <input type="range" min="0" max="25" step="0.5" value="1.5" id="ft-stroke-width" oninput="updateFreeTextAttr()">
+      <input type="number" id="val-ft-stroke-width" class="val" value="1.5" min="0" max="25" step="0.5" oninput="syncInputValue('val-ft-stroke-width','ft-stroke-width'); updateFreeTextAttr()">
     </div>
     <div class="ui-row"><label>縦中横</label><input type="checkbox" id="ft-tcy" checked onchange="updateFreeTextAttr()"></div>
 
@@ -1396,6 +1425,34 @@ body.preview-mode .article-group { background-color: transparent; }
 <div id="headline-measure-box"></div>
 
 <script>
+  // --- スライダーと数値入力の連動ヘルパー ---
+  function syncSliderValue(sliderId, inputId) {
+    const slider = document.getElementById(sliderId);
+    const input = document.getElementById(inputId);
+    if (!slider || !input) return;
+
+    // スライダーから入力フィールドに反映
+    input.value = slider.value;
+  }
+
+  function syncInputValue(inputId, sliderId) {
+    const slider = document.getElementById(sliderId);
+    const input = document.getElementById(inputId);
+    if (!slider || !input) return;
+
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    let val = parseFloat(input.value);
+
+    // 範囲チェック
+    if (!isNaN(val)) {
+      if (val < min) val = min;
+      if (val > max) val = max;
+      slider.value = val;
+      input.value = val;
+    }
+  }
+
   // --- フォント設定 ---
   const fontOptions = [
     { label: "--- 明朝体 (Mincho) ---", options: [
@@ -1595,35 +1652,35 @@ body.preview-mode .article-group { background-color: transparent; }
       // 紙面レイアウト設定
       if (document.getElementById('paper-dan-count')) {
           document.getElementById('paper-dan-count').value = config.pageDanCount;
-          document.getElementById('val-paper-dan-count').innerText = config.pageDanCount;
+          document.getElementById('val-paper-dan-count').value = config.pageDanCount;
       }
       if (document.getElementById('paper-rows-per-dan')) {
           document.getElementById('paper-rows-per-dan').value = config.rowsPerDan;
-          document.getElementById('val-paper-rows-per-dan').innerText = config.rowsPerDan;
+          document.getElementById('val-paper-rows-per-dan').value = config.rowsPerDan;
       }
       if (document.getElementById('paper-chars-per-dan')) {
           document.getElementById('paper-chars-per-dan').value = config.charsPerDan;
-          document.getElementById('val-paper-chars-per-dan').innerText = config.charsPerDan;
+          document.getElementById('val-paper-chars-per-dan').value = config.charsPerDan;
       }
 
       // 色・線
       if (document.getElementById('inp-grid-color')) document.getElementById('inp-grid-color').value = config.gridColor;
       if (document.getElementById('inp-paper-color')) document.getElementById('inp-paper-color').value = config.paperColor;
       if (document.getElementById('inp-text-color')) document.getElementById('inp-text-color').value = config.textColor;
-      if (document.getElementById('inp-border-width')) { document.getElementById('inp-border-width').value = config.borderWidth; document.getElementById('val-border-width').innerText = config.borderWidth; }
-      if (document.getElementById('inp-divider-width')) { document.getElementById('inp-divider-width').value = config.dividerWidth; document.getElementById('val-divider-width').innerText = config.dividerWidth; }
+      if (document.getElementById('inp-border-width')) { document.getElementById('inp-border-width').value = config.borderWidth; document.getElementById('val-border-width').value = config.borderWidth; }
+      if (document.getElementById('inp-divider-width')) { document.getElementById('inp-divider-width').value = config.dividerWidth; document.getElementById('val-divider-width').value = config.dividerWidth; }
       // グリッド表示
       if (document.getElementById('chk-grid')) document.getElementById('chk-grid').checked = true;
       // フォントと字形倍率・太さ
       if (document.getElementById('inp-font')) document.getElementById('inp-font').value = config.fontFamily;
-      if (document.getElementById('inp-font-weight')) { document.getElementById('inp-font-weight').value = config.fontWeight; document.getElementById('val-font-weight').innerText = config.fontWeight; }
-      if (document.getElementById('inp-glyph-scale')) { document.getElementById('inp-glyph-scale').value = config.glyphScale; document.getElementById('val-glyph-scale').innerText = config.glyphScale; }
+      if (document.getElementById('inp-font-weight')) { document.getElementById('inp-font-weight').value = config.fontWeight; document.getElementById('val-font-weight').value = config.fontWeight; }
+      if (document.getElementById('inp-glyph-scale')) { document.getElementById('inp-glyph-scale').value = config.glyphScale; document.getElementById('val-glyph-scale').value = config.glyphScale; }
       // 外周情報（現在選択中のターゲットに反映）
       if (document.getElementById('marg-text')) document.getElementById('marg-text').value = config.marginalia[currentMarginaliaTarget].text;
       if (document.getElementById('marg-font')) document.getElementById('marg-font').value = config.marginalia[currentMarginaliaTarget].font;
-      if (document.getElementById('marg-size')) { document.getElementById('marg-size').value = config.marginalia[currentMarginaliaTarget].size; document.getElementById('val-marg-size').innerText = config.marginalia[currentMarginaliaTarget].size; }
-      if (document.getElementById('marg-weight')) { document.getElementById('marg-weight').value = config.marginalia[currentMarginaliaTarget].weight || 400; document.getElementById('val-marg-weight').innerText = config.marginalia[currentMarginaliaTarget].weight || 400; }
-      if (document.getElementById('marg-spacing')) { document.getElementById('marg-spacing').value = config.marginalia[currentMarginaliaTarget].spacing; document.getElementById('val-marg-spacing').innerText = config.marginalia[currentMarginaliaTarget].spacing; }
+      if (document.getElementById('marg-size')) { document.getElementById('marg-size').value = config.marginalia[currentMarginaliaTarget].size; document.getElementById('val-marg-size').value = config.marginalia[currentMarginaliaTarget].size; }
+      if (document.getElementById('marg-weight')) { document.getElementById('marg-weight').value = config.marginalia[currentMarginaliaTarget].weight || 400; document.getElementById('val-marg-weight').value = config.marginalia[currentMarginaliaTarget].weight || 400; }
+      if (document.getElementById('marg-spacing')) { document.getElementById('marg-spacing').value = config.marginalia[currentMarginaliaTarget].spacing; document.getElementById('val-marg-spacing').value = config.marginalia[currentMarginaliaTarget].spacing; }
   }
 
   // トリミング用変数
@@ -1724,9 +1781,9 @@ body.preview-mode .article-group { background-color: transparent; }
 
   // --- 初期化 ---
   function init() {
-    updateFontSelectors(); 
+    updateFontSelectors();
     selectMarginaliaTarget('left');
-    
+
     // AutoSaveの確認
     if (localStorage.getItem('shinbun_autosave_v82')) {
         if(confirm("前回作業していた内容が残っています。復元しますか？")) {
@@ -1735,7 +1792,7 @@ body.preview-mode .article-group { background-color: transparent; }
             localStorage.removeItem('shinbun_autosave_v82');
         }
     }
-    
+
     updatePaperSize(); // サイズ初期化
     if (hasRestoredCanvasView) updateTransform();
     else fitView();
@@ -2063,13 +2120,14 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   function updatePaperConfigInternal() {
+    // スライダーと入力フィールドを同期
+    syncSliderValue('paper-dan-count', 'val-paper-dan-count');
+    syncSliderValue('paper-rows-per-dan', 'val-paper-rows-per-dan');
+    syncSliderValue('paper-chars-per-dan', 'val-paper-chars-per-dan');
+
     config.pageDanCount = parseInt(document.getElementById('paper-dan-count').value);
     config.rowsPerDan = parseInt(document.getElementById('paper-rows-per-dan').value);
     config.charsPerDan = parseInt(document.getElementById('paper-chars-per-dan').value);
-    
-    document.getElementById('val-paper-dan-count').innerText = config.pageDanCount;
-    document.getElementById('val-paper-rows-per-dan').innerText = config.rowsPerDan;
-    document.getElementById('val-paper-chars-per-dan').innerText = config.charsPerDan;
 
     calculateLayout();
   }
@@ -2129,25 +2187,26 @@ function updatePaperSize(fromPreset = false) {
       document.getElementById('marg-weight').value = data.weight || 400;
       document.getElementById('marg-spacing').value = data.spacing;
       
-      document.getElementById('val-marg-size').innerText = data.size;
-      document.getElementById('val-marg-weight').innerText = data.weight || 400;
-      document.getElementById('val-marg-spacing').innerText = data.spacing;
+      document.getElementById('val-marg-size').value = data.size;
+      document.getElementById('val-marg-weight').value = data.weight || 400;
+      document.getElementById('val-marg-spacing').value = data.spacing;
   }
 
   function updateMarginaliaConfig() {
+      // スライダーと入力フィールドを同期
+      syncSliderValue('marg-size', 'val-marg-size');
+      syncSliderValue('marg-weight', 'val-marg-weight');
+      syncSliderValue('marg-spacing', 'val-marg-spacing');
+
       const target = currentMarginaliaTarget;
       const data = config.marginalia[target];
-      
+
       data.text = document.getElementById('marg-text').value;
       data.font = document.getElementById('marg-font').value;
       data.size = parseFloat(document.getElementById('marg-size').value);
       data.weight = parseInt(document.getElementById('marg-weight').value) || 400;
       data.spacing = parseFloat(document.getElementById('marg-spacing').value);
 
-      document.getElementById('val-marg-size').innerText = data.size;
-      document.getElementById('val-marg-weight').innerText = data.weight;
-      document.getElementById('val-marg-spacing').innerText = data.spacing;
-      
       renderMarginalia();
       isDirty = true;
       saveToLocalStorage();
@@ -2259,14 +2318,16 @@ function updatePaperSize(fromPreset = false) {
   }
 
   async function updateColors() {
+    // スライダーと入力フィールドを同期
+    syncSliderValue('inp-divider-width', 'val-divider-width');
+    syncSliderValue('inp-border-width', 'val-border-width');
+
     config.gridColor = document.getElementById('inp-grid-color').value;
     config.paperColor = document.getElementById('inp-paper-color').value;
-    config.textColor = document.getElementById('inp-text-color').value; 
-    
+    config.textColor = document.getElementById('inp-text-color').value;
+
     config.borderWidth = parseFloat(document.getElementById('inp-border-width').value);
     config.dividerWidth = parseFloat(document.getElementById('inp-divider-width').value);
-    document.getElementById('val-border-width').innerText = config.borderWidth;
-    document.getElementById('val-divider-width').innerText = config.dividerWidth;
 
     document.querySelector('.paper').style.backgroundColor = config.paperColor;
     root.style.setProperty('--text-color', config.textColor);
@@ -2291,11 +2352,15 @@ function updatePaperSize(fromPreset = false) {
   }
 
   function updateVisuals() {
+    // スライダーと入力フィールドを同期
+    syncSliderValue('inp-glyph-scale', 'val-glyph-scale');
+    if (document.getElementById('inp-font-weight')) {
+        syncSliderValue('inp-font-weight', 'val-font-weight');
+    }
+
     config.glyphScale = parseFloat(document.getElementById('inp-glyph-scale').value);
-    document.getElementById('val-glyph-scale').innerText = config.glyphScale;
     if (document.getElementById('inp-font-weight')) {
         config.fontWeight = parseInt(document.getElementById('inp-font-weight').value) || 400;
-        document.getElementById('val-font-weight').innerText = config.fontWeight;
         root.style.setProperty('--font-weight', config.fontWeight);
     }
     root.style.setProperty('--glyph-scale', config.glyphScale);
@@ -2310,11 +2375,17 @@ function updatePaperSize(fromPreset = false) {
     if (!selectedId) return;
     const g = groups.find(i => i.id === selectedId);
     if (!g || g.type !== 'headline') return;
+
+    // スライダーと入力フィールドを同期
+    syncSliderValue('hl-pad-long', 'val-hl-pad-long');
+    syncSliderValue('hl-pad-short', 'val-hl-pad-short');
+
     g.fontFamily = document.getElementById('hl-font').value;
     g.fontWeight = document.getElementById('hl-weight').value;
     g.isInverted = document.getElementById('hl-inverted').checked;
-    g.padLong = parseInt(document.getElementById('hl-pad-long').value); document.getElementById('val-hl-pad-long').innerText = g.padLong;
-    g.padShort = parseInt(document.getElementById('hl-pad-short').value); document.getElementById('val-hl-pad-short').innerText = g.padShort;
+    g.padLong = parseInt(document.getElementById('hl-pad-long').value);
+    g.padShort = parseInt(document.getElementById('hl-pad-short').value);
+
     renderGroups();
     isDirty = true;
     saveToLocalStorage();
@@ -2324,8 +2395,12 @@ function updatePaperSize(fromPreset = false) {
     if (!selectedId) return;
     const g = groups.find(i => i.id === selectedId);
     if (!g || g.type !== 'vline') return;
+
+    // スライダーと入力フィールドを同期
+    syncSliderValue('vl-width', 'val-vl-width');
+
     g.lineWidth = parseInt(document.getElementById('vl-width').value);
-    document.getElementById('val-vl-width').innerText = g.lineWidth;
+
     renderGroups();
     isDirty = true;
     saveToLocalStorage();
@@ -2349,7 +2424,14 @@ function updatePaperSize(fromPreset = false) {
       if (!selectedId) return;
       const g = groups.find(i => i.id === selectedId);
       if (!g || g.type !== 'header') return;
-      
+
+      // スライダーと入力フィールドを同期
+      syncSliderValue('hdr-border-out', 'val-hdr-border-out');
+      syncSliderValue('hdr-border-in', 'val-hdr-border-in');
+      syncSliderValue('hdr-text-stroke', 'val-hdr-text-stroke');
+      syncSliderValue('hdr-pad-v', 'val-hdr-pad-v');
+      syncSliderValue('hdr-pad-h', 'val-hdr-pad-h');
+
       g.text = document.getElementById('hdr-title').value;
       g.fontFamily = document.getElementById('hdr-font').value;
       g.isTitleInverted = document.getElementById('hdr-text-inverted').checked;
@@ -2357,10 +2439,10 @@ function updatePaperSize(fromPreset = false) {
 
       g.titlePadV = parseInt(document.getElementById('hdr-pad-v').value);
       g.titlePadH = parseInt(document.getElementById('hdr-pad-h').value);
-      
+
       g.borderOut = parseInt(document.getElementById('hdr-border-out').value);
       g.borderIn = parseInt(document.getElementById('hdr-border-in').value);
-      
+
       renderGroups();
       isDirty = true;
       saveToLocalStorage();
@@ -2370,10 +2452,14 @@ function updatePaperSize(fromPreset = false) {
       if (!selectedId) return;
       const g = groups.find(i => i.id === selectedId);
       if (!g || g.type !== 'correction') return;
+
+      // スライダーと入力フィールドを同期
+      syncSliderValue('corr-border-width', 'val-corr-border-width');
+
       g.fillMode = document.getElementById('corr-fill-mode').value;
       g.borderStyle = document.getElementById('corr-border-style').value;
       g.borderWidth = parseFloat(document.getElementById('corr-border-width').value);
-      document.getElementById('val-corr-border-width').innerText = g.borderWidth;
+
       renderGroups();
       isDirty = true;
       saveToLocalStorage();
@@ -2403,23 +2489,26 @@ function updatePaperSize(fromPreset = false) {
       saveToLocalStorage();
   }
 
-  function updateFreeTextAttr() {
-      if (!selectedId) return;
-      const g = groups.find(i => i.id === selectedId);
-      if (!g || g.type !== 'free-text') return;
-      g.fontFamily = document.getElementById('ft-font').value;
-      g.fontWeight = parseInt(document.getElementById('ft-weight').value) || 400;
-      g.fontSize = parseInt(document.getElementById('ft-size').value) || 24;
-      g.letterSpacing = parseFloat(document.getElementById('ft-letter').value) || 0;
-      g.tcyEnabled = document.getElementById('ft-tcy').checked;
-      g.writingMode = document.getElementById('ft-writing').value;
-      document.getElementById('val-ft-weight').innerText = g.fontWeight;
-      document.getElementById('val-ft-size').innerText = g.fontSize;
-      document.getElementById('val-ft-letter').innerText = g.letterSpacing;
-      renderGroups();
-      isDirty = true;
-      saveToLocalStorage();
-  }
+function updateFreeTextAttr() {
+    if (!selectedId) return;
+    const g = groups.find(i => i.id === selectedId);
+    if (!g || g.type !== 'free-text') return;
+
+    g.fontFamily = document.getElementById('ft-font').value;
+    g.fontWeight = parseInt(document.getElementById('ft-weight').value) || 400;
+    g.fontSize = parseFloat(document.getElementById('ft-size').value) || 24;
+    g.letterSpacing = parseFloat(document.getElementById('ft-letter').value) || 0;
+    g.tcyEnabled = document.getElementById('ft-tcy').checked;
+    g.style = document.getElementById('ft-style').value;
+    g.strokeWidth = parseFloat(document.getElementById('ft-stroke-width').value) || 1.5;
+
+    const writingSelect = document.getElementById('ft-writing');
+    if (writingSelect) g.writingMode = writingSelect.value;
+
+    renderGroups();
+    isDirty = true;
+    saveToLocalStorage();
+}
 
   function nudgeHeaderTitle(dx, dy, reset = false) {
       if (!selectedId) return;
@@ -2446,15 +2535,18 @@ function updatePaperSize(fromPreset = false) {
     if (!g || g.type !== 'image') return;
     g.captionPos = document.getElementById('img-cap-pos').value;
     g.fontFamily = document.getElementById('img-font').value;
-    
+
     g.colorMode = document.getElementById('img-color-mode').value;
     const inkArea = document.getElementById('ink-adjust-area');
     if (g.colorMode === 'ink') {
         inkArea.style.display = 'block';
+
+        // スライダーと入力フィールドを同期
+        syncSliderValue('img-contrast', 'val-img-contrast');
+        syncSliderValue('img-brightness', 'val-img-brightness');
+
         g.inkContrast = parseFloat(document.getElementById('img-contrast').value);
         g.inkBrightness = parseFloat(document.getElementById('img-brightness').value);
-        document.getElementById('val-img-contrast').innerText = g.inkContrast.toFixed(1);
-        document.getElementById('val-img-brightness').innerText = g.inkBrightness.toFixed(1);
         g.imageInkSrc = null;
         convertImageToInk(g);
     } else {
@@ -2782,46 +2874,28 @@ function updatePaperSize(fromPreset = false) {
         return;
     }
     if (e.target.closest('.overlay-modal') || e.target.classList.contains('inline-editor')) return;
-    const isTool = e.target.closest('.toolbar-container') || e.target.closest('.settings-panel');
-    const isMenu = e.target.closest('.menu-overlay');
-    if (!isTool && !isMenu && !['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) deselectAll();
-
-    // タッチのダブルタップで選択
-    if (e.pointerType === 'touch' && activePointers.size === 1) {
-        const now = Date.now();
-        const dt = now - lastTapTime;
-        const dx = Math.abs(e.clientX - lastTapPos.x);
-        const dy = Math.abs(e.clientY - lastTapPos.y);
-        const targetGroup = e.target.closest('.article-group');
-        if (dt < 300 && dx < 20 && dy < 20 && targetGroup && targetGroup.dataset.id === lastTapTargetId) {
-            const gid = targetGroup.dataset.id;
-            const g = groups.find(item => item.id === gid);
-            if (g) {
-                const root = findRootGroup(g);
-                selectObject(root.id);
-                return;
-            }
-        }
-        lastTapTime = now;
-        lastTapPos = { x: e.clientX, y: e.clientY };
-        lastTapTargetId = targetGroup ? targetGroup.dataset.id : null;
-    }
+    
+    // Reset tap detection to prevent interference
+    lastTapTime = 0; 
+    lastTapTargetId = null;
 
     isMouseDown = true; isDragging = false; 
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    // 中ボタンは常にパン操作
-    if (e.button === 1) {
+    if (e.button === 1) { // Middle mouse button is always for panning
         opMode = 'pan'; startViewX = viewX; startViewY = viewY;
-        viewport.style.cursor = 'grabbing'; deselectAll(); return;
+        viewport.style.cursor = 'grabbing';
+        return;
     }
 
     if (currentTool === 'hand') {
         opMode = 'pan'; startViewX = viewX; startViewY = viewY;
-        viewport.style.cursor = 'grabbing'; deselectAll(); return; 
+        viewport.style.cursor = 'grabbing';
+        return; 
     }
 
+    // Port/link logic should be checked first
     if (e.target.classList.contains('port-out')) {
         const groupEl = e.target.closest('.article-group');
         const g = groups.find(item => item.id === groupEl.dataset.id);
@@ -2839,12 +2913,12 @@ function updatePaperSize(fromPreset = false) {
         startLinkFromPort(gid, e.target);
         return;
     }
-    // リンク開始中に別の場所をクリックしたらキャンセル
     if (linkingSourceId) {
         clearPortHighlights();
         tempLinkLine.style.display = 'none';
         linkingSourceId = null; linkingSourceType = null; opMode = 'none';
     }
+    
     if (e.target.classList.contains('resize-handle')) {
         opMode = 'resize';
         const groupEl = e.target.closest('.article-group');
@@ -2853,36 +2927,23 @@ function updatePaperSize(fromPreset = false) {
         anchorRight = g.x + g.w; anchorTop = g.y;
         return;
     }
+
     const targetGroup = e.target.closest('.article-group');
-    if (targetGroup && !e.target.classList.contains('port-in')) {
-        const tgt = groups.find(item => item.id === targetGroup.dataset.id);
-        // 塗りつぶし上でドラッグ開始したら、現在ツールの追加を優先
-        if (tgt && tgt.type === 'correction' && currentTool !== 'hand') {
-            opMode = 'draw_wait';
-            if (currentTool === 'free-text') {
-                anchorSnapX = hPos.x; anchorSnapY = hPos.y;
-            } else {
-                const snap = calculateSnapPoint(hPos.x, hPos.y, currentTool);
-                anchorSnapX = snap.x; anchorSnapY = snap.y;
-            }
-            return;
-        }
-        // グリッド非表示(preview-mode)時でもクリックでグリッドを戻しつつ選択できるようにする
-        if (document.body.classList.contains('preview-mode')) {
-            const chk = document.getElementById('chk-grid');
-            if (chk) { chk.checked = true; toggleGrid(); }
-        }
-        selectObject(targetGroup.dataset.id);
-        opMode = 'move'; targetId = targetGroup.dataset.id;
+    if (targetGroup) {
+        opMode = 'move_wait'; // Set mode to wait for move, but don't select yet
+        targetId = targetGroup.dataset.id;
+        const tgt = groups.find(item => item.id === targetId);
         if (tgt) {
-            dragStartX = hPos.x; dragStartY = hPos.y;
-            initialElemX = tgt.x; initialElemY = tgt.y;
+            dragStartX = hPos.x;
+            dragStartY = hPos.y;
+            initialElemX = tgt.x;
+            initialElemY = tgt.y;
         }
         return;
     }
+
     if (['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) {
         if (!document.body.classList.contains('preview-mode')) {
-           deselectAll(); 
            opMode = 'draw_wait'; 
            if (currentTool === 'free-text') {
               anchorSnapX = hPos.x; anchorSnapY = hPos.y;
@@ -2892,7 +2953,7 @@ function updatePaperSize(fromPreset = false) {
            }
         }
     }
-  }
+}
   viewport.onmousedown = handlePointerDown;
   viewport.addEventListener('pointerdown', handlePointerDown);
 
@@ -2937,7 +2998,13 @@ function updatePaperSize(fromPreset = false) {
     if (!isDragging) {
         if (Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2)) < DRAG_THRESHOLD) return;
         isDragging = true;
-        if (opMode !== 'pan' && opMode !== 'link' && opMode !== 'draw_wait') saveHistory();
+        if (opMode === 'move_wait') {
+            // move_waitからmoveへ遷移
+            opMode = 'move';
+            saveHistory();
+        } else if (opMode !== 'pan' && opMode !== 'link' && opMode !== 'draw_wait') {
+            saveHistory();
+        }
     }
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
@@ -3087,47 +3154,64 @@ function updatePaperSize(fromPreset = false) {
     }
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (!isMouseDown) return; isMouseDown = false; activePointerId = null;
-    viewport.style.cursor = (['box','headline','correction','vline','image','header'].includes(currentTool)) ? 'crosshair' : 'default';
+    viewport.style.cursor = (['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) ? 'crosshair' : 'default';
     if (currentTool === 'hand') viewport.style.cursor = 'grab';
 
-    if (!isDragging) {
+    if (!isDragging) { // Click logic
+        const previouslySelectedId = selectedId;
         const targetGroup = e.target.closest('.article-group');
-        if (targetGroup && currentTool !== 'hand' && !document.body.classList.contains('preview-mode')) {
-           selectObject(targetGroup.dataset.id);
-        } else if (!e.target.closest('.settings-panel') && !e.target.closest('.toolbar-container') && !e.target.closest('.menu-panel')) {
-           deselectAll();
-        }
-        return;
-    }
-    if (opMode === 'link') {
-        // マウスアップでは確定しない（クリック＆クリック用）。キャンセル操作は別途。
-    } else if (opMode === 'draw' && ghost) {
-        const x = parseFloat(ghost.style.left), y = parseFloat(ghost.style.top);
-        const w = parseFloat(ghost.style.width), h = parseFloat(ghost.style.height);
-        ghost.remove(); ghost = null;
-        if (w > 0 && h > 0) { saveHistory(); addGroup(currentTool, x, y, w, h); }
-    } else if (opMode === 'move' || opMode === 'resize') {
-        const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
-        if (el) {
+        const targetId = targetGroup ? targetGroup.dataset.id : null;
+        const isUiElement = e.target.closest('.settings-panel') || e.target.closest('.toolbar-container') || e.target.closest('.menu-panel');
+
+        if (e.target.closest('.resize-handle') || e.target.closest('.port')) {
+            // Handle/port clicks are managed by other logic, do nothing here.
+        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode')) {
             const g = groups.find(item => item.id === targetId);
-            if (opMode === 'move') { g.x = parseFloat(el.style.left); g.y = parseFloat(el.style.top); }
-            else { 
-                g.x = parseFloat(el.style.left); g.w = parseFloat(el.style.width);
-                let hVal = parseFloat(el.style.height);
-                
-                if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || (g.type === 'article' && g.freeLayout)) {
-                    g.h = hVal; 
-                } else {
-                    g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
+            if (g) {
+                // All editable types now use the overlay editor
+                if (['free-text', 'headline', 'header', 'article', 'image'].includes(g.type)) {
+                    openOverlayEditor(g);
                 }
             }
-            renderGroups(); selectObject(targetId);
+        } else if (targetGroup) {
+            selectObject(targetId);
+        } else if (!isUiElement) {
+            deselectAll();
+        }
+    } else { // Drag-end logic
+        if (opMode === 'link') {
+            // Link mode is click-click, not handled on pointer up.
+        } else if (opMode === 'draw' && ghost) {
+            const x = parseFloat(ghost.style.left), y = parseFloat(ghost.style.top);
+            const w = parseFloat(ghost.style.width), h = parseFloat(ghost.style.height);
+            ghost.remove(); ghost = null;
+            if (w > 0 && h > 0) { saveHistory(); addGroup(currentTool, x, y, w, h); }
+        } else if (opMode === 'move' || opMode === 'resize') {
+            const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
+            if (el) {
+                const g = groups.find(item => item.id === targetId);
+                if (opMode === 'move') { g.x = parseFloat(el.style.left); g.y = parseFloat(el.style.top); }
+                else { 
+                    g.x = parseFloat(el.style.left); g.w = parseFloat(el.style.width);
+                    let hVal = parseFloat(el.style.height);
+                    
+                    if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || (g.type === 'article' && g.freeLayout)) {
+                        g.h = hVal; 
+                    } else {
+                        g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
+                    }
+                }
+                renderGroups(); selectObject(targetId);
+            }
         }
     }
-    isDragging = false; opMode = 'none';
+
+    // Common cleanup
+    isDragging = false; 
+    opMode = 'none';
     isDirty = true;
     saveToLocalStorage();
-  }
+}
   window.addEventListener('mouseup', handlePointerUp);
   window.addEventListener('pointerup', handlePointerUp);
   window.addEventListener('pointercancel', handlePointerUp);
@@ -3218,6 +3302,7 @@ function updatePaperSize(fromPreset = false) {
         newGroup.fontWeight = config.fontWeight;
         newGroup.fontSize = Math.round(config.baseFontSize);
         newGroup.letterSpacing = 0;
+        newGroup.style = 'ink';
         newGroup.tcyEnabled = true;
         newGroup.writingMode = 'vertical';
         newGroup.align = 'center';
@@ -3262,8 +3347,8 @@ function updatePaperSize(fromPreset = false) {
          document.getElementById('hl-font').value = g.fontFamily;
          document.getElementById('hl-weight').value = g.fontWeight;
          document.getElementById('hl-inverted').checked = (g.isInverted !== false);
-         document.getElementById('hl-pad-long').value = g.padLong || 0; document.getElementById('val-hl-pad-long').innerText = g.padLong || 0;
-         document.getElementById('hl-pad-short').value = g.padShort || 0; document.getElementById('val-hl-pad-short').innerText = g.padShort || 0;
+         document.getElementById('hl-pad-long').value = g.padLong || 0; document.getElementById('val-hl-pad-long').value = g.padLong || 0;
+         document.getElementById('hl-pad-short').value = g.padShort || 0; document.getElementById('val-hl-pad-short').value = g.padShort || 0;
        } else if (g.type === 'header') {
          switchPanel('panel-header');
          document.getElementById('hdr-title').value = g.text;
@@ -3281,10 +3366,10 @@ function updatePaperSize(fromPreset = false) {
          document.getElementById('corr-border-style').value = g.borderStyle || 'none';
          const bw = g.borderWidth ?? 2;
          document.getElementById('corr-border-width').value = bw;
-         document.getElementById('val-corr-border-width').innerText = bw;
+         document.getElementById('val-corr-border-width').value = bw;
        } else if (g.type === 'vline') {
          switchPanel('panel-vline');
-         document.getElementById('vl-width').value = g.lineWidth || 2; document.getElementById('val-vl-width').innerText = g.lineWidth || 2;
+         document.getElementById('vl-width').value = g.lineWidth || 2; document.getElementById('val-vl-width').value = g.lineWidth || 2;
        } else if (g.type === 'image') {
          switchPanel('panel-image');
          document.getElementById('img-cap-pos').value = g.captionPos || 'bottom';
@@ -3296,8 +3381,8 @@ function updatePaperSize(fromPreset = false) {
              inkArea.style.display = 'block';
              document.getElementById('img-contrast').value = g.inkContrast ?? 1.0;
              document.getElementById('img-brightness').value = g.inkBrightness ?? 0.0;
-             document.getElementById('val-img-contrast').innerText = (g.inkContrast ?? 1.0).toFixed(1);
-             document.getElementById('val-img-brightness').innerText = (g.inkBrightness ?? 0.0).toFixed(1);
+             document.getElementById('val-img-contrast').value = (g.inkContrast ?? 1.0).toFixed(1);
+             document.getElementById('val-img-brightness').value = (g.inkBrightness ?? 0.0).toFixed(1);
          } else {
              inkArea.style.display = 'none';
          }
@@ -3312,13 +3397,17 @@ function updatePaperSize(fromPreset = false) {
          switchPanel('panel-free-text');
          document.getElementById('ft-font').value = g.fontFamily || config.fontFamily;
          document.getElementById('ft-weight').value = g.fontWeight || 400;
-         document.getElementById('val-ft-weight').innerText = g.fontWeight || 400;
+         document.getElementById('val-ft-weight').value = g.fontWeight || 400;
          document.getElementById('ft-size').value = g.fontSize || 24;
-         document.getElementById('val-ft-size').innerText = g.fontSize || 24;
+         document.getElementById('val-ft-size').value = g.fontSize || 24;
          document.getElementById('ft-letter').value = g.letterSpacing ?? 0;
-         document.getElementById('val-ft-letter').innerText = g.letterSpacing ?? 0;
+         document.getElementById('val-ft-letter').value = g.letterSpacing ?? 0;
+         document.getElementById('ft-style').value = g.style || 'ink';
+         document.getElementById('ft-stroke-width').value = g.strokeWidth ?? 1.5;
+         document.getElementById('val-ft-stroke-width').value = g.strokeWidth ?? 1.5;
          document.getElementById('ft-tcy').checked = g.tcyEnabled !== false;
-         document.getElementById('ft-writing').value = g.writingMode || 'vertical';
+         const writingSelect = document.getElementById('ft-writing');
+         if (writingSelect) writingSelect.value = g.writingMode || 'vertical';
          setFreeTextAlign(g.align || 'center');
        } else {
          switchPanel('panel-article'); 
@@ -3378,20 +3467,27 @@ function updatePaperSize(fromPreset = false) {
   }
 
   function openInlineEditor(group) {
-    closeInlineEditor(); saveHistory(); 
+    closeInlineEditor(); saveHistory();
     const el = document.querySelector(`.article-group[data-id="${group.id}"]`);
     if (!el) return;
     const editor = document.createElement('textarea'); editor.className = 'inline-editor';
-    editor.value = group.text;
+    editor.value = group.text || '';
     editor.dataset.editingId = group.id;
-    
+
     editor.style.left = group.x + 'px'; editor.style.top = group.y + 'px';
-    editor.style.width = group.w + 'px'; 
-    const originalHeight = (el.offsetHeight / SCALE_Y) + 20; 
-    editor.style.height = originalHeight + 'px';
-    editor.style.transform = `translate(${config.nudgeX}px, ${config.nudgeY}px) scaleY(${SCALE_Y})`;
-    
-    editor.onblur = function() { closeInlineEditor(); }; 
+    editor.style.width = group.w + 'px';
+
+    // 自由文テキストの場合は高さもそのまま使用
+    if (group.type === 'free-text') {
+      editor.style.height = group.h + 'px';
+      editor.style.transform = `translate(${group.nudgeX || 0}px, ${group.nudgeY || 0}px)`;
+    } else {
+      const originalHeight = (el.offsetHeight / SCALE_Y) + 20;
+      editor.style.height = originalHeight + 'px';
+      editor.style.transform = `translate(${config.nudgeX}px, ${config.nudgeY}px) scaleY(${SCALE_Y})`;
+    }
+
+    editor.onblur = function() { closeInlineEditor(); };
     editor.onkeydown = (e) => { if (e.key === 'Escape') closeInlineEditor(); };
     hanmen.appendChild(editor); editor.focus();
   }
@@ -3633,11 +3729,11 @@ function updatePaperSize(fromPreset = false) {
           const bStyle = g.borderStyle || 'none';
           const borderCol = (g.fillMode === 'ink') ? config.paperColor : config.textColor;
           const bWidth = g.borderWidth ?? 2;
-          // 枠線は1mm内側に別レイヤーで描画
+          // 枠線描画: 紙色の時は0距離、インクの時は1mm内側
           if (bStyle !== 'none' && bWidth > 0) {
               const frame = document.createElement('div');
               frame.style.position = 'absolute';
-              frame.style.inset = `${PX_PER_MM}px`;
+              frame.style.inset = (g.fillMode === 'paper') ? '0px' : `${PX_PER_MM}px`;
               frame.style.pointerEvents = 'none';
               frame.style.borderStyle = bStyle;
               frame.style.borderWidth = `${bWidth}px`;
@@ -3672,13 +3768,40 @@ function updatePaperSize(fromPreset = false) {
           content.style.fontWeight = g.fontWeight || 400;
           content.style.fontSize = (g.fontSize || 24) + 'px';
           content.style.letterSpacing = (g.letterSpacing || 0) + 'px';
-          content.style.writingMode = (g.writingMode === 'horizontal') ? 'horizontal-tb' : 'vertical-rl';
+          const writingMode = g.writingMode || 'vertical';
+          content.style.writingMode = writingMode === 'horizontal' ? 'horizontal-tb' : 'vertical-rl';
           content.style.lineHeight = 1.4;
-          if (g.writingMode === 'horizontal') content.style.textAlign = ta;
+          // スタイル切替（インク/紙色/袋文字/袋＋影）
+          const inkCol = config.textColor;
+          const paperCol = config.paperColor;
+          content.style.webkitTextStrokeWidth = '0px';
+          content.style.webkitTextStrokeColor = 'transparent';
+          content.style.textShadow = 'none';
+          content.style.paintOrder = 'normal';
 
+          const styleMode = g.style || 'ink';
+          const strokeWidth = g.strokeWidth ?? 1.5;
+          const shadowX = g.shadowX ?? 2;
+          const shadowY = g.shadowY ?? 2;
+
+          if (styleMode === 'paper') {
+              content.style.color = paperCol;
+          } else if (styleMode === 'outline') {
+              content.style.color = paperCol;
+              content.style.webkitTextStrokeWidth = strokeWidth + 'px';
+              content.style.webkitTextStrokeColor = inkCol;
+              content.style.paintOrder = 'stroke fill';
+              content.style.webkitTextStrokeLinejoin = 'round';
+          } else { // ink
+              content.style.color = inkCol;
+          }
+          if (writingMode === 'horizontal') content.style.textAlign = ta;
+          else content.style.textAlign = '';
+
+          const useTCY = (g.tcyEnabled !== undefined) ? g.tcyEnabled : (g.tcy ?? true);
           const formatFreeText = (text) => {
               let t = text || "";
-              if (g.tcyEnabled !== false) {
+              if (useTCY) {
                   t = t.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>');
               }
               return t.replace(/\n/g, '<br>');
@@ -3806,11 +3929,7 @@ function updatePaperSize(fromPreset = false) {
               if (nextG) drawLinkLine(g, nextG);
           }
       }
-      el.ondblclick = (e) => { 
-        e.stopPropagation(); 
-        const root = findRootGroup(g); 
-        selectObject(root.id);
-      };
+      
       hanmen.appendChild(el);
     });
   }
