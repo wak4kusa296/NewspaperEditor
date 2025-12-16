@@ -373,6 +373,13 @@
   .file-upload-btn:hover, .action-btn:hover { 
     background: var(--ui-hover); 
   }
+  .danger-btn {
+    border-color: #d9534f;
+    color: #d9534f;
+  }
+  .danger-btn:hover {
+    background: #ffeaea;
+  }
   #inp-image-file { display: none; }
 
   /* あふれ情報表示エリア */
@@ -1097,6 +1104,9 @@ body.preview-mode .article-group { background-color: transparent; }
       <span id="val-font-weight" class="val">400</span>
     </div>
     <div class="ui-row"><label>字形倍率</label><input type="range" min="0.5" max="1.5" step="0.01" value="1.0" id="inp-glyph-scale" oninput="updateVisuals()"><span id="val-glyph-scale" class="val">1.0</span></div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
 
   <!-- 画像設定 -->
@@ -1161,6 +1171,9 @@ body.preview-mode .article-group { background-color: transparent; }
       </div>
       <button class="nudge-btn" onclick="nudgeSelection(0, 1)">▼</button>
     </div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
 
   <!-- 題字設定 -->
@@ -1218,6 +1231,9 @@ body.preview-mode .article-group { background-color: transparent; }
       </div>
       <button class="nudge-btn" onclick="nudgeSelection(0, 1)">▼</button>
     </div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
 
   <!-- 見出し設定 -->
@@ -1238,6 +1254,9 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row"><label>太さ</label><select id="hl-weight" onchange="updateHeadlineAttr()"><option value="400">標準</option><option value="700" selected>太字</option><option value="900">極太</option></select></div>
     <div class="ui-row"><label>余白(長辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-long" oninput="updateHeadlineAttr()"><span id="val-hl-pad-long" class="val">0</span></div>
     <div class="ui-row"><label>余白(短辺)</label><input type="range" min="0" max="50" step="1" value="0" id="hl-pad-short" oninput="updateHeadlineAttr()"><span id="val-hl-pad-short" class="val">0</span></div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
 
   <!-- 縦線設定 -->
@@ -1254,6 +1273,9 @@ body.preview-mode .article-group { background-color: transparent; }
     </div>
     <div class="ui-header">太さ</div>
     <div class="ui-row"><label>線の太さ</label><input type="range" min="1" max="10" step="1" value="2" id="vl-width" oninput="updateVlineAttr()"><span id="val-vl-width" class="val">2</span></div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
   
   <!-- 修正テープ設定 -->
@@ -1269,6 +1291,9 @@ body.preview-mode .article-group { background-color: transparent; }
       <button class="nudge-btn" onclick="nudgeSelection(0, 1)">▼</button>
     </div>
     <div class="calc-info">自由配置・紙色ベタ塗り</div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
   </div>
 </div>
 
@@ -2726,37 +2751,28 @@ function updatePaperSize(fromPreset = false) {
         if (activePointers.size >= 2) {
             const keys = Array.from(activePointers.keys()).slice(0, 2);
             const p0 = activePointers.get(keys[0]); const p1 = activePointers.get(keys[1]);
-            const pp0 = previousPointers.get(keys[0]) || p0; const pp1 = previousPointers.get(keys[1]) || p1;
             const curCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-
-            const v0 = { x: p0.x - pp0.x, y: p0.y - pp0.y };
-            const v1 = { x: p1.x - pp1.x, y: p1.y - pp1.y };
-            const dot = (v0.x * v1.x) + (v0.y * v1.y);
-            const len0 = Math.hypot(v0.x, v0.y) || 1;
-            const len1 = Math.hypot(v1.x, v1.y) || 1;
-            const dotNorm = dot / (len0 * len1);
-
             const dist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
-            const doPan = dotNorm > 0.3; // 同方向なら平行移動、反対ならピンチズーム
 
-            if (doPan) {
-                const avgDx = (v0.x + v1.x) / 2;
-                const avgDy = (v0.y + v1.y) / 2;
-                viewX += avgDx * TOUCH_PAN_FACTOR;
-                viewY += avgDy * TOUCH_PAN_FACTOR;
-                updateTransform();
-            } else if (!doPan && dist > 0) {
+            // 2本指スワイプで移動
+            if (pinchPrevCenter) {
+                viewX += (curCenter.x - pinchPrevCenter.x) * TOUCH_PAN_FACTOR;
+                viewY += (curCenter.y - pinchPrevCenter.y) * TOUCH_PAN_FACTOR;
+            }
+
+            // ピンチで拡大縮小
+            if (pinchPrevDist && dist > 0) {
                 const mx = curCenter.x; const my = curCenter.y;
                 const wx = (mx - viewX) / viewScale; const wy = (my - viewY) / viewScale;
-                const baseDist = pinchPrevDist || dist;
-                const newScale = Math.min(Math.max(viewScale * (dist / baseDist), 0.1), 5.0);
+                const scaleFactor = dist / pinchPrevDist;
+                const newScale = Math.min(Math.max(viewScale * scaleFactor, 0.1), 5.0);
                 viewX = mx - wx * newScale;
                 viewY = my - wy * newScale;
                 viewScale = newScale;
-                updateTransform();
             }
             pinchPrevCenter = curCenter;
             pinchPrevDist = dist;
+            updateTransform();
         }
         return;
     }
@@ -3014,6 +3030,14 @@ function updatePaperSize(fromPreset = false) {
     }
     groups.push(newGroup); renderGroups(); selectObject(id);
     saveToLocalStorage();
+  }
+  function deleteSelectedBox() {
+    if (!selectedId) return;
+    const target = groups.find(g => g.id === selectedId);
+    if (!target) return;
+    if (!confirm("このボックスを削除しますか？")) return;
+    saveHistory();
+    deleteObject(selectedId);
   }
   function deleteObject(id) {
     groups = groups.filter(g => g.id !== id);
