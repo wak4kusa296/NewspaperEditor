@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -35,7 +35,8 @@
     --nudge-x: 0px; --nudge-y: 0px;
     --font-family: "BIZ UDMincho", serif;
     --font-weight: 400;
-    --scale-y: 0.85; /* 新聞特有の扁平率 */
+    --scale-y: 0.85; /* 新
+    聞特有の扁平率 */
     --glyph-scale: 1.0; 
 
     /* 色設定 */
@@ -984,7 +985,7 @@ body.preview-mode .article-group { background-color: transparent; }
     
     <div class="ui-header">用紙</div>
     <div class="ui-row">
-        <select id="paper-preset" onchange="updatePaperSize()" style="flex:2">
+        <select id="paper-preset" onchange="updatePaperSize('preset')" style="flex:2">
             <option value="A3">A3 (297×420)</option>
             <option value="A4">A4 (210×297)</option>
             <option value="B4">B4 (257×364)</option>
@@ -994,9 +995,9 @@ body.preview-mode .article-group { background-color: transparent; }
     </div>
     <div class="ui-row">
         <label>幅</label>
-        <input type="number" id="paper-w-mm" value="297" onchange="updatePaperSize()">
+        <input type="number" id="paper-w-mm" value="297" onchange="updatePaperSize('input')">
         <label>高</label>
-        <input type="number" id="paper-h-mm" value="420" onchange="updatePaperSize()">
+        <input type="number" id="paper-h-mm" value="420" onchange="updatePaperSize('input')">
     </div>
 
     <div class="ui-row">
@@ -1360,10 +1361,10 @@ body.preview-mode .article-group { background-color: transparent; }
   // --- 設定 ---
   let config = {
     baseFontSize: 24, charsPerDan: 11, charsGap: 1.0, pageDanCount: 8, rowsPerDan: 40,
-    marginTop: 30, marginBottom: 30, marginInner: 20, marginOuter: 20,
+    marginTop: 20, marginBottom: 20, marginInner: 20, marginOuter: 20,
     nudgeX: 0, nudgeY: 0, glyphScale: 1.0, lineGap: 12,
     fontFamily: '"BIZ UDMincho", serif', fontWeight: 400,
-    
+    paperPreset: 'A3',
     // 用紙サイズ
     paperW: 297, paperH: 420,
 
@@ -1441,12 +1442,25 @@ body.preview-mode .article-group { background-color: transparent; }
 
   function applyCanvasState(state) {
       if (!state) return false;
-      const { viewX: vx, viewY: vy, viewScale: vs } = state;
-      const hasValues = [vx, vy, vs].every(v => typeof v === 'number' && isFinite(v));
-      if (!hasValues) return false;
-      viewX = vx; viewY = vy; viewScale = vs;
-      updateTransform();
-      return true;
+      const { viewX: vx, viewY: vy, viewScale: vs, paperW, paperH } = state;
+      
+      // 用紙サイズも保存されている場合は反映（カスタム/縦横をそのまま復元）
+      const hasPaper = [paperW, paperH].every(v => typeof v === 'number' && isFinite(v));
+      if (hasPaper) {
+          config.paperW = paperW;
+          config.paperH = paperH;
+          const wInput = document.getElementById('paper-w-mm');
+          const hInput = document.getElementById('paper-h-mm');
+          if (wInput) wInput.value = paperW;
+          if (hInput) hInput.value = paperH;
+      }
+
+      const hasView = [vx, vy, vs].every(v => typeof v === 'number' && isFinite(v));
+      if (hasView) {
+          viewX = vx; viewY = vy; viewScale = vs;
+          updateTransform();
+      }
+      return hasView;
   }
 
   const viewport = document.getElementById('viewport');
@@ -1481,6 +1495,7 @@ body.preview-mode .article-group { background-color: transparent; }
   }
   function applyConfigToUI() {
       // 用紙・マージン
+      if (document.getElementById('paper-preset') && config.paperPreset) document.getElementById('paper-preset').value = config.paperPreset;
       if (document.getElementById('paper-w-mm')) document.getElementById('paper-w-mm').value = config.paperW;
       if (document.getElementById('paper-h-mm')) document.getElementById('paper-h-mm').value = config.paperH;
       if (document.getElementById('margin-top')) document.getElementById('margin-top').value = config.marginTop;
@@ -1955,7 +1970,7 @@ body.preview-mode .article-group { background-color: transparent; }
       wInput.value = hInput.value;
       hInput.value = temp;
       document.getElementById('paper-preset').value = 'custom';
-      updatePaperSize();
+      updatePaperSize(false);
   }
 
   function updatePaperConfigInternal() {
@@ -1970,20 +1985,29 @@ body.preview-mode .article-group { background-color: transparent; }
     calculateLayout();
   }
 
-function updatePaperSize() {
-      const preset = document.getElementById('paper-preset').value;
+function updatePaperSize(fromPreset = false) {
+      const presetSelect = document.getElementById('paper-preset');
       const wInput = document.getElementById('paper-w-mm');
       const hInput = document.getElementById('paper-h-mm');
+      const presets = {
+          A3: { w: 297, h: 420 },
+          A4: { w: 210, h: 297 },
+          B4: { w: 257, h: 364 }
+      };
 
-      if (preset !== 'custom') {
-          let w, h;
-          switch(preset) {
-              case 'A3': w=297; h=420; break;
-              case 'A4': w=210; h=297; break;
-              case 'B4': w=257; h=364; break;
+      if (fromPreset) {
+          const preset = presets[presetSelect.value];
+          if (preset) {
+              wInput.value = preset.w;
+              hInput.value = preset.h;
           }
-          wInput.value = w; hInput.value = h;
+      } else {
+          const currentW = parseFloat(wInput.value);
+          const currentH = parseFloat(hInput.value);
+          const matched = Object.entries(presets).find(([, size]) => size.w === currentW && size.h === currentH);
+          presetSelect.value = matched ? matched[0] : 'custom';
       }
+
       config.paperW = parseFloat(wInput.value);
       config.paperH = parseFloat(hInput.value);
       
@@ -3112,7 +3136,7 @@ function updatePaperSize() {
     }
     return curr;
   }
-  
+
   function openEditorHandler(g) {
       if (document.body.classList.contains('preview-mode') || currentTool === 'hand') return;
       if (g.type === 'article') {
