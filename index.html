@@ -1441,6 +1441,7 @@ body.preview-mode .article-group { background-color: transparent; }
   let isPinching = false, pinchStartDist = 0, pinchStartScale = 1, pinchCenter = { x: 0, y: 0 }, pinchPrevCenter = null, pinchPrevDist = 0;
   const TOUCH_PAN_FACTOR = 0.65; // dampen touch pan so movement tracks finger better
   const DRAG_THRESHOLD = 10;
+  let lastTapTime = 0, lastTapPos = { x: 0, y: 0 }, lastTapTargetId = null;
   let opMode = 'none';
   let startX, startY, startViewX, startViewY, dragStartX, dragStartY;
   let initialElemX, initialElemY, anchorRight, anchorTop;
@@ -2668,6 +2669,27 @@ function updatePaperSize(fromPreset = false) {
     const isTool = e.target.closest('.toolbar-container') || e.target.closest('.settings-panel');
     const isMenu = e.target.closest('.menu-overlay');
     if (!isTool && !isMenu && !['box','headline','correction','vline','image','header'].includes(currentTool)) deselectAll();
+
+    // タッチのダブルタップで編集
+    if (e.pointerType === 'touch' && activePointers.size === 1) {
+        const now = Date.now();
+        const dt = now - lastTapTime;
+        const dx = Math.abs(e.clientX - lastTapPos.x);
+        const dy = Math.abs(e.clientY - lastTapPos.y);
+        const targetGroup = e.target.closest('.article-group');
+        if (dt < 300 && dx < 20 && dy < 20 && targetGroup && targetGroup.dataset.id === lastTapTargetId) {
+            const gid = targetGroup.dataset.id;
+            const g = groups.find(item => item.id === gid);
+            if (g) {
+                const root = findRootGroup(g);
+                openEditorHandler(root);
+                return;
+            }
+        }
+        lastTapTime = now;
+        lastTapPos = { x: e.clientX, y: e.clientY };
+        lastTapTargetId = targetGroup ? targetGroup.dataset.id : null;
+    }
 
     isMouseDown = true; isDragging = false; 
     startX = e.clientX; startY = e.clientY;
