@@ -535,6 +535,25 @@ body.preview-mode .article-group { background-color: transparent; }
       display: flex; flex-direction: row-reverse; flex-wrap: wrap;
   }
 
+  /* 自由テキスト */
+  .free-text-wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+  }
+  .free-text-content {
+    color: var(--text-color);
+    mix-blend-mode: multiply;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    pointer-events: none;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
   .resize-handle {
     position: absolute; bottom: -6px; left: -6px;
     width: 10px; height: 10px; background-color: #fff; border: 1px solid #2196f3;
@@ -846,6 +865,12 @@ body.preview-mode .article-group { background-color: transparent; }
          <svg viewBox="0 0 24 24" class="duotone-icon"><rect x="4" y="4" width="16" height="16" fill="currentColor" class="secondary"/><path d="M20,4H4V20H20ZM8,14H6V10H8Zm10,0H10V10H18Z" fill="currentColor" fill-rule="evenodd"/></svg>
       </div>
       <div class="tool-label">塗り</div>
+    </div>
+    <div class="tool-btn" id="tool-free-text" onclick="setTool('free-text')" title="自由テキスト">
+      <div class="tool-icon">
+        <svg viewBox="0 0 24 24" class="duotone-icon"><rect x="3" y="3" width="18" height="18" rx="2" fill="currentColor" class="secondary"/><path d="M8 7h8v2h-3v8h-2V9H8z" fill="currentColor"/></svg>
+      </div>
+      <div class="tool-label">自由文</div>
     </div>
     <div class="tool-btn" id="tool-vline" onclick="setTool('vline')" title="縦線を引く">
       <div class="tool-icon">
@@ -1245,14 +1270,93 @@ body.preview-mode .article-group { background-color: transparent; }
       <div class="nudge-row">
         <button class="nudge-btn" onclick="nudgeSelection(-1, 0)">◀</button>
         <button class="nudge-btn nudge-reset" onclick="nudgeSelection(0, 0, true)">RST</button>
-        <button class="nudge-btn" onclick="nudgeSelection(1, 0)">▶</button>
+      <button class="nudge-btn" onclick="nudgeSelection(1, 0)">▶</button>
       </div>
       <button class="nudge-btn" onclick="nudgeSelection(0, 1)">▼</button>
     </div>
-    <div class="calc-info">自由配置・紙色ベタ塗り</div>
+    <div class="ui-header">色</div>
+    <div class="ui-row">
+        <label>塗り色</label>
+        <select id="corr-fill-mode" onchange="updateCorrectionAttr()">
+            <option value="paper">紙色</option>
+            <option value="ink">インク色</option>
+        </select>
+    </div>
+
+    <div class="ui-header">枠線</div>
+    <div class="ui-row">
+        <label>スタイル</label>
+        <select id="corr-border-style" onchange="updateCorrectionAttr()">
+            <option value="none">なし</option>
+            <option value="solid">実線</option>
+            <option value="dotted">点線</option>
+            <option value="double">二重線</option>
+        </select>
+    </div>
+    <div class="ui-row">
+        <label>太さ</label>
+        <input type="range" min="0" max="10" step="0.5" value="2" id="corr-border-width" oninput="updateCorrectionAttr()">
+        <span id="val-corr-border-width" class="val">2</span>
+    </div>
+    <div class="calc-info">左右は行間ぶんの余白を確保します</div>
 
     <div class="ui-header">ボックス操作</div>
     <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
+  </div>
+
+  <!-- 自由テキスト設定 -->
+  <div id="panel-free-text" class="panel-section">
+    <div class="ui-header">自由テキスト</div>
+    <div class="calc-info">塗りつぶしより上のレイヤーで表示</div>
+
+    <div class="ui-header">文字</div>
+    <div class="ui-row"><label>フォント</label><select id="ft-font" class="font-selector" onchange="updateFreeTextAttr()"></select></div>
+    <div class="ui-row">
+      <label>太さ</label>
+      <input type="range" min="100" max="900" step="100" value="400" id="ft-weight" oninput="updateFreeTextAttr()">
+      <span id="val-ft-weight" class="val">400</span>
+    </div>
+    <div class="ui-row">
+      <label>サイズ</label>
+      <input type="range" min="8" max="96" step="1" value="24" id="ft-size" oninput="updateFreeTextAttr()">
+      <span id="val-ft-size" class="val">24</span>
+    </div>
+    <div class="ui-row">
+      <label>字間</label>
+      <input type="range" min="-5" max="20" step="0.5" value="0" id="ft-letter" oninput="updateFreeTextAttr()">
+      <span id="val-ft-letter" class="val">0</span>
+    </div>
+    <div class="ui-row"><label>縦中横</label><input type="checkbox" id="ft-tcy" checked onchange="updateFreeTextAttr()"></div>
+
+    <div class="ui-header">方向</div>
+    <div class="ui-row">
+      <label>書字方向</label>
+      <select id="ft-writing" onchange="updateFreeTextAttr()">
+        <option value="vertical">縦書き</option>
+        <option value="horizontal">横書き</option>
+      </select>
+    </div>
+
+    <div class="ui-header">配置</div>
+    <div class="btn-group-row">
+      <button class="btn-group-item" id="ft-align-tl" onclick="setFreeTextAlign('top-left')">左上</button>
+      <button class="btn-group-item" id="ft-align-tc" onclick="setFreeTextAlign('top')">中央上</button>
+      <button class="btn-group-item" id="ft-align-tr" onclick="setFreeTextAlign('top-right')">右上</button>
+    </div>
+    <div class="btn-group-row">
+      <button class="btn-group-item" id="ft-align-ml" onclick="setFreeTextAlign('left')">左中</button>
+      <button class="btn-group-item" id="ft-align-mc" onclick="setFreeTextAlign('center')">中央</button>
+      <button class="btn-group-item" id="ft-align-mr" onclick="setFreeTextAlign('right')">右中</button>
+    </div>
+    <div class="btn-group-row">
+      <button class="btn-group-item" id="ft-align-bl" onclick="setFreeTextAlign('bottom-left')">左下</button>
+      <button class="btn-group-item" id="ft-align-bc" onclick="setFreeTextAlign('bottom')">中央下</button>
+      <button class="btn-group-item" id="ft-align-br" onclick="setFreeTextAlign('bottom-right')">右下</button>
+    </div>
+
+    <div class="ui-header">ボックス操作</div>
+    <button class="action-btn danger-btn" onclick="deleteSelectedBox()">このボックスを削除</button>
+    <div class="calc-info">ダブルクリックで編集</div>
   </div>
 </div>
 
@@ -2262,6 +2366,61 @@ function updatePaperSize(fromPreset = false) {
       saveToLocalStorage();
   }
 
+  function updateCorrectionAttr() {
+      if (!selectedId) return;
+      const g = groups.find(i => i.id === selectedId);
+      if (!g || g.type !== 'correction') return;
+      g.fillMode = document.getElementById('corr-fill-mode').value;
+      g.borderStyle = document.getElementById('corr-border-style').value;
+      g.borderWidth = parseFloat(document.getElementById('corr-border-width').value);
+      document.getElementById('val-corr-border-width').innerText = g.borderWidth;
+      renderGroups();
+      isDirty = true;
+      saveToLocalStorage();
+  }
+
+  function setFreeTextAlign(al) {
+      const mapId = {
+          'top-left':'ft-align-tl', 'top':'ft-align-tc', 'top-right':'ft-align-tr',
+          'left':'ft-align-ml', 'center':'ft-align-mc', 'right':'ft-align-mr',
+          'bottom-left':'ft-align-bl', 'bottom':'ft-align-bc', 'bottom-right':'ft-align-br'
+      };
+      Object.values(mapId).forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.classList.remove('active');
+      });
+      const targetId = mapId[al];
+      if (targetId) {
+          const btn = document.getElementById(targetId);
+          if (btn) btn.classList.add('active');
+      }
+      if (!selectedId) return;
+      const g = groups.find(i => i.id === selectedId);
+      if (!g || g.type !== 'free-text') return;
+      g.align = al;
+      renderGroups();
+      isDirty = true;
+      saveToLocalStorage();
+  }
+
+  function updateFreeTextAttr() {
+      if (!selectedId) return;
+      const g = groups.find(i => i.id === selectedId);
+      if (!g || g.type !== 'free-text') return;
+      g.fontFamily = document.getElementById('ft-font').value;
+      g.fontWeight = parseInt(document.getElementById('ft-weight').value) || 400;
+      g.fontSize = parseInt(document.getElementById('ft-size').value) || 24;
+      g.letterSpacing = parseFloat(document.getElementById('ft-letter').value) || 0;
+      g.tcyEnabled = document.getElementById('ft-tcy').checked;
+      g.writingMode = document.getElementById('ft-writing').value;
+      document.getElementById('val-ft-weight').innerText = g.fontWeight;
+      document.getElementById('val-ft-size').innerText = g.fontSize;
+      document.getElementById('val-ft-letter').innerText = g.letterSpacing;
+      renderGroups();
+      isDirty = true;
+      saveToLocalStorage();
+  }
+
   function nudgeHeaderTitle(dx, dy, reset = false) {
       if (!selectedId) return;
       const g = groups.find(i => i.id === selectedId);
@@ -2482,9 +2641,16 @@ function updatePaperSize(fromPreset = false) {
     } else {
         const g = groups.find(i => i.id === selectedId);
         if (!g) return;
-        if (reset) { g.nudgeX = 0; g.nudgeY = 0; }
-        else { g.nudgeX = (g.nudgeX || 0) + ndx; g.nudgeY = (g.nudgeY || 0) + ndy; }
-        renderGroups();
+        if (g.type === 'free-text') {
+            if (reset) return; // 位置リセットはなし
+            g.x = (g.x || 0) + ndx;
+            g.y = (g.y || 0) + ndy;
+            renderGroups();
+        } else {
+            if (reset) { g.nudgeX = 0; g.nudgeY = 0; }
+            else { g.nudgeX = (g.nudgeX || 0) + ndx; g.nudgeY = (g.nudgeY || 0) + ndy; }
+            renderGroups();
+        }
     }
     saveHistory();
   }
@@ -2618,9 +2784,9 @@ function updatePaperSize(fromPreset = false) {
     if (e.target.closest('.overlay-modal') || e.target.classList.contains('inline-editor')) return;
     const isTool = e.target.closest('.toolbar-container') || e.target.closest('.settings-panel');
     const isMenu = e.target.closest('.menu-overlay');
-    if (!isTool && !isMenu && !['box','headline','correction','vline','image','header'].includes(currentTool)) deselectAll();
+    if (!isTool && !isMenu && !['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) deselectAll();
 
-    // タッチのダブルタップで編集
+    // タッチのダブルタップで選択
     if (e.pointerType === 'touch' && activePointers.size === 1) {
         const now = Date.now();
         const dt = now - lastTapTime;
@@ -2632,7 +2798,7 @@ function updatePaperSize(fromPreset = false) {
             const g = groups.find(item => item.id === gid);
             if (g) {
                 const root = findRootGroup(g);
-                openEditorHandler(root);
+                selectObject(root.id);
                 return;
             }
         }
@@ -2689,6 +2855,18 @@ function updatePaperSize(fromPreset = false) {
     }
     const targetGroup = e.target.closest('.article-group');
     if (targetGroup && !e.target.classList.contains('port-in')) {
+        const tgt = groups.find(item => item.id === targetGroup.dataset.id);
+        // 塗りつぶし上でドラッグ開始したら、現在ツールの追加を優先
+        if (tgt && tgt.type === 'correction' && currentTool !== 'hand') {
+            opMode = 'draw_wait';
+            if (currentTool === 'free-text') {
+                anchorSnapX = hPos.x; anchorSnapY = hPos.y;
+            } else {
+                const snap = calculateSnapPoint(hPos.x, hPos.y, currentTool);
+                anchorSnapX = snap.x; anchorSnapY = snap.y;
+            }
+            return;
+        }
         // グリッド非表示(preview-mode)時でもクリックでグリッドを戻しつつ選択できるようにする
         if (document.body.classList.contains('preview-mode')) {
             const chk = document.getElementById('chk-grid');
@@ -2696,17 +2874,22 @@ function updatePaperSize(fromPreset = false) {
         }
         selectObject(targetGroup.dataset.id);
         opMode = 'move'; targetId = targetGroup.dataset.id;
-        const g = groups.find(item => item.id === targetId);
-        dragStartX = hPos.x; dragStartY = hPos.y;
-        initialElemX = g.x; initialElemY = g.y;
+        if (tgt) {
+            dragStartX = hPos.x; dragStartY = hPos.y;
+            initialElemX = tgt.x; initialElemY = tgt.y;
+        }
         return;
     }
-    if (['box','headline','correction','vline','image','header'].includes(currentTool)) {
+    if (['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) {
         if (!document.body.classList.contains('preview-mode')) {
            deselectAll(); 
            opMode = 'draw_wait'; 
-           const snap = calculateSnapPoint(hPos.x, hPos.y, currentTool);
-           anchorSnapX = snap.x; anchorSnapY = snap.y;
+           if (currentTool === 'free-text') {
+              anchorSnapX = hPos.x; anchorSnapY = hPos.y;
+           } else {
+              const snap = calculateSnapPoint(hPos.x, hPos.y, currentTool);
+              anchorSnapX = snap.x; anchorSnapY = snap.y;
+           }
         }
     }
   }
@@ -2779,86 +2962,117 @@ function updatePaperSize(fromPreset = false) {
             hanmen.appendChild(ghost);
         }
         
-        const fixedRight = anchorSnapX + config.baseFontSize;
-        
-        let unitH;
-        if (currentTool === 'box') {
-            unitH = isFreeCreationMode ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+        if (currentTool === 'free-text') {
+            const fx = Math.min(anchorSnapX, hPos.x);
+            const fy = Math.min(anchorSnapY, hPos.y);
+            const fw = Math.max(10, Math.abs(hPos.x - anchorSnapX));
+            const fh = Math.max(10, Math.abs(hPos.y - anchorSnapY));
+            ghost.style.left = Math.round(fx) + 'px'; ghost.style.top = Math.round(fy) + 'px';
+            ghost.style.width = Math.round(fw) + 'px'; ghost.style.height = Math.round(fh) + 'px';
         } else {
-            unitH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header') ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+            const fixedRight = anchorSnapX + config.baseFontSize;
+            
+            let unitH;
+            if (currentTool === 'box') {
+                unitH = isFreeCreationMode ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+            } else {
+                unitH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header' || currentTool === 'free-text') ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+            }
+            let finalY = anchorSnapY, snH = unitH;
+            // 縦方向: 原点をまたいだら1段上にシフトした上で選択
+            const goingUp = hPos.y < anchorSnapY;
+            const charStep = config.baseFontSize * SCALE_Y;
+            const upOffset = (currentTool === 'box') ? charStep : 0; // 記事は1文字分上を基準、他はオフセットなし
+            const baseY = goingUp ? (anchorSnapY - upOffset) : anchorSnapY;
+            const distY = Math.abs(hPos.y - baseY);
+            let dc = Math.ceil(distY / unitH); if (dc < 1) dc = 1;
+            if (currentTool === 'box') {
+                snH = isFreeCreationMode ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
+            } else {
+                snH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header' || currentTool === 'free-text') ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
+            }
+            // 上方向は基準から高さ分上に置く（記事は2文字分上が基準）、下方向は基準に下ろす
+            finalY = goingUp ? (baseY - snH) : baseY;
+
+            let finalX = anchorSnapX, snW = config.baseFontSize;
+            // 横方向: 原点をまたいだら1列右にシフトした上で選択
+            const baseXRaw = hPos.x > anchorSnapX ? (anchorSnapX + linePitch) : anchorSnapX; // 右方向は1文字右を基準
+            const anchorCol = getColIndex(baseXRaw);
+            const currCol = getColIndex(hPos.x);
+            const maxCol = Math.max(anchorCol, currCol);
+            const minCol = Math.min(anchorCol, currCol);
+            const cols = Math.max(1, maxCol - minCol + 1);
+            snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
+            // 左端は左側(大きい列番号)に合わせる
+            finalX = hanmen.clientWidth - (maxCol * linePitch) - config.baseFontSize;
+
+            // 強制スナップ（整数ピクセルに丸めてブレを抑える）
+            finalX = Math.round(finalX);
+            finalY = Math.round(finalY);
+            snW = Math.round(snW);
+            snH = Math.round(snH);
+
+            ghost.style.left = finalX + 'px'; ghost.style.top = finalY + 'px';
+            ghost.style.width = snW + 'px'; ghost.style.height = snH + 'px';
         }
-        let finalY = anchorSnapY, snH = unitH;
-        // 縦方向: 原点をまたいだら1段上にシフトした上で選択
-        const goingUp = hPos.y < anchorSnapY;
-        const charStep = config.baseFontSize * SCALE_Y;
-        const upOffset = (currentTool === 'box') ? charStep : 0; // 記事は1文字分上を基準、他はオフセットなし
-        const baseY = goingUp ? (anchorSnapY - upOffset) : anchorSnapY;
-        const distY = Math.abs(hPos.y - baseY);
-        let dc = Math.ceil(distY / unitH); if (dc < 1) dc = 1;
-        if (currentTool === 'box') {
-            snH = isFreeCreationMode ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
-        } else {
-            snH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header') ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
-        }
-        // 上方向は基準から高さ分上に置く（記事は2文字分上が基準）、下方向は基準に下ろす
-        finalY = goingUp ? (baseY - snH) : baseY;
-
-        let finalX = anchorSnapX, snW = config.baseFontSize;
-        // 横方向: 原点をまたいだら1列右にシフトした上で選択
-        const baseXRaw = hPos.x > anchorSnapX ? (anchorSnapX + linePitch) : anchorSnapX; // 右方向は1文字右を基準
-        const anchorCol = getColIndex(baseXRaw);
-        const currCol = getColIndex(hPos.x);
-        const maxCol = Math.max(anchorCol, currCol);
-        const minCol = Math.min(anchorCol, currCol);
-        const cols = Math.max(1, maxCol - minCol + 1);
-        snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
-        // 左端は左側(大きい列番号)に合わせる
-        finalX = hanmen.clientWidth - (maxCol * linePitch) - config.baseFontSize;
-
-        // 強制スナップ（整数ピクセルに丸めてブレを抑える）
-        finalX = Math.round(finalX);
-        finalY = Math.round(finalY);
-        snW = Math.round(snW);
-        snH = Math.round(snH);
-
-        ghost.style.left = finalX + 'px'; ghost.style.top = finalY + 'px';
-        ghost.style.width = snW + 'px'; ghost.style.height = snH + 'px';
 
     } else if (opMode === 'move') {
         let newX = initialElemX + hPos.x - dragStartX;
         let newY = initialElemY + hPos.y - dragStartY;
         const g = groups.find(item => item.id === targetId);
         
-        const snap = calculateSnapPoint(newX, newY, g.type, g);
         const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
-        if(el) { el.style.left = snap.x + 'px'; el.style.top = snap.y + 'px'; }
+        if (el) {
+            if (g.type === 'free-text') {
+                el.style.left = Math.round(newX) + 'px';
+                el.style.top = Math.round(newY) + 'px';
+            } else {
+                const snap = calculateSnapPoint(newX, newY, g.type, g);
+                el.style.left = snap.x + 'px'; el.style.top = snap.y + 'px';
+            }
+        }
 
     } else if (opMode === 'resize') {
         const g = groups.find(item => item.id === targetId);
         
         // 記事のフリーレイアウト対応
         let isFree = (g.type === 'article' && g.freeLayout);
-        let unitH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || isFree) ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
-        
-        let rawH = hPos.y - anchorTop;
-        let minH = unitH;
-        if (rawH < minH) rawH = minH; 
-        
-        let dc = Math.ceil(rawH / unitH); if (dc < 1) dc = 1;
-        
-        let snH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || isFree) ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
+        if (g.type === 'free-text') {
+            let newW = anchorRight - hPos.x;
+            let newH = hPos.y - anchorTop;
+            newW = Math.max(10, newW);
+            newH = Math.max(10, newH);
+            let newX = anchorRight - newW;
+            const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
+            if (el) {
+                el.style.left = Math.round(newX) + 'px';
+                el.style.top = Math.round(anchorTop) + 'px';
+                el.style.width = Math.round(newW) + 'px';
+                el.style.height = Math.round(newH) + 'px';
+            }
+        } else {
+            let unitH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+            
+            let rawH = hPos.y - anchorTop;
+            let minH = unitH;
+            if (rawH < minH) rawH = minH; 
+            
+            let dc = Math.ceil(rawH / unitH); if (dc < 1) dc = 1;
+            
+            let snH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
 
-        let distW = anchorRight - hPos.x;
-        let minW = config.baseFontSize;
-        if (distW < minW) distW = minW; 
-        let cols = Math.ceil(distW / linePitch); if (cols < 1) cols = 1;
-        let snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
-        let newX = anchorRight - snW;
-        
-        const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
-        if(el) {
-            el.style.left = newX + 'px'; el.style.top = anchorTop + 'px';
-            el.style.width = snW + 'px'; el.style.height = snH + 'px';
+            let distW = anchorRight - hPos.x;
+            let minW = config.baseFontSize;
+            if (distW < minW) distW = minW; 
+            let cols = Math.ceil(distW / linePitch); if (cols < 1) cols = 1;
+            let snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
+            let newX = anchorRight - snW;
+            
+            const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
+            if(el) {
+                el.style.left = newX + 'px'; el.style.top = anchorTop + 'px';
+                el.style.width = snW + 'px'; el.style.height = snH + 'px';
+            }
         }
     }
   }
@@ -2901,7 +3115,7 @@ function updatePaperSize(fromPreset = false) {
                 g.x = parseFloat(el.style.left); g.w = parseFloat(el.style.width);
                 let hVal = parseFloat(el.style.height);
                 
-                if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || (g.type === 'article' && g.freeLayout)) {
+                if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || (g.type === 'article' && g.freeLayout)) {
                     g.h = hVal; 
                 } else {
                     g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
@@ -2953,8 +3167,10 @@ function updatePaperSize(fromPreset = false) {
         unitH = obj.freeLayout ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
     } else if (type === 'box') {
         unitH = isFreeCreationMode ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+    } else if (type === 'free-text') {
+        return { x: rawX, y: rawY };
     } else {
-        unitH = (type === 'correction' || type === 'image' || type === 'headline' || type === 'header') ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
+        unitH = (type === 'correction' || type === 'image' || type === 'headline' || type === 'header' || type === 'free-text') ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
     }
     
     let snY = Math.round(rawY / unitH) * unitH; if (snY < 0) snY = 0;
@@ -2992,7 +3208,19 @@ function updatePaperSize(fromPreset = false) {
         newGroup.titlePadV = 10; newGroup.titlePadH = 5;
         newGroup.borderOut = 4; newGroup.borderIn = 1;
     } else if (type === 'correction') {
-        newGroup.type = 'correction'; newGroup.h = h; newGroup.text = ""; 
+        newGroup.type = 'correction'; newGroup.h = h; newGroup.text = "";
+        newGroup.fillMode = 'paper';
+        newGroup.borderStyle = 'none';
+        newGroup.borderWidth = 2;
+    } else if (type === 'free-text') {
+        newGroup.type = 'free-text'; newGroup.h = h; newGroup.text = "自由テキスト";
+        newGroup.fontFamily = config.fontFamily;
+        newGroup.fontWeight = config.fontWeight;
+        newGroup.fontSize = Math.round(config.baseFontSize);
+        newGroup.letterSpacing = 0;
+        newGroup.tcyEnabled = true;
+        newGroup.writingMode = 'vertical';
+        newGroup.align = 'center';
     } else if (type === 'vline') {
         newGroup.type = 'vline'; newGroup.lineWidth = 2; newGroup.text = "";
     } else if (type === 'image') {
@@ -3049,6 +3277,11 @@ function updatePaperSize(fromPreset = false) {
          document.getElementById('hdr-border-out').value = g.borderOut !== undefined ? g.borderOut : 4;
          document.getElementById('hdr-border-in').value = g.borderIn !== undefined ? g.borderIn : 1;
        } else if (g.type === 'correction') { switchPanel('panel-correction');
+         document.getElementById('corr-fill-mode').value = g.fillMode || 'paper';
+         document.getElementById('corr-border-style').value = g.borderStyle || 'none';
+         const bw = g.borderWidth ?? 2;
+         document.getElementById('corr-border-width').value = bw;
+         document.getElementById('val-corr-border-width').innerText = bw;
        } else if (g.type === 'vline') {
          switchPanel('panel-vline');
          document.getElementById('vl-width').value = g.lineWidth || 2; document.getElementById('val-vl-width').innerText = g.lineWidth || 2;
@@ -3075,7 +3308,18 @@ function updatePaperSize(fromPreset = false) {
              const h = Math.round(g.h || 0);
              sizeEl.textContent = `${w}px × ${h}px`;
          }
-
+       } else if (g.type === 'free-text') {
+         switchPanel('panel-free-text');
+         document.getElementById('ft-font').value = g.fontFamily || config.fontFamily;
+         document.getElementById('ft-weight').value = g.fontWeight || 400;
+         document.getElementById('val-ft-weight').innerText = g.fontWeight || 400;
+         document.getElementById('ft-size').value = g.fontSize || 24;
+         document.getElementById('val-ft-size').innerText = g.fontSize || 24;
+         document.getElementById('ft-letter').value = g.letterSpacing ?? 0;
+         document.getElementById('val-ft-letter').innerText = g.letterSpacing ?? 0;
+         document.getElementById('ft-tcy').checked = g.tcyEnabled !== false;
+         document.getElementById('ft-writing').value = g.writingMode || 'vertical';
+         setFreeTextAlign(g.align || 'center');
        } else {
          switchPanel('panel-article'); 
          updateOverflowStatus(g);
@@ -3118,7 +3362,7 @@ function updatePaperSize(fromPreset = false) {
 
   // --- エディタ関連 ---
   function findRootGroup(group) {
-    if (group.type === 'headline' || group.type === 'image' || group.type === 'header') return group;
+    if (group.type === 'headline' || group.type === 'image' || group.type === 'header' || group.type === 'free-text') return group;
     let curr = group, depth = 0;
     while(depth < 100) {
         const parent = groups.find(p => p.next === curr.id);
@@ -3243,7 +3487,7 @@ function updatePaperSize(fromPreset = false) {
       el.style.left = g.x + 'px'; el.style.top = g.y + 'px'; el.style.width = g.w + 'px';
       
       let totalH;
-      if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || (g.type === 'article' && g.freeLayout)) {
+      if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || (g.type === 'article' && g.freeLayout)) {
           totalH = g.h;
       } else {
           totalH = (g.danCount * physicalHDan) + ((g.danCount - 1) * physicalHGap);
@@ -3379,10 +3623,69 @@ function updatePaperSize(fromPreset = false) {
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
           const inner = document.createElement('div'); inner.className = 'correction-inner';
-          inner.style.backgroundColor = config.paperColor;
+          inner.style.position = 'relative';
+          const fillCol = (g.fillMode === 'ink') ? config.textColor : config.paperColor;
+          inner.style.backgroundColor = fillCol;
+          inner.style.paddingLeft = config.lineGap + 'px';
+          inner.style.paddingRight = config.lineGap + 'px';
+          inner.style.boxSizing = 'border-box';
           inner.style.boxShadow = `calc(var(--line-gap)*-1) 0 0 0 ${config.paperColor}, var(--line-gap) 0 0 0 ${config.paperColor}`;
+          const bStyle = g.borderStyle || 'none';
+          const borderCol = (g.fillMode === 'ink') ? config.paperColor : config.textColor;
+          const bWidth = g.borderWidth ?? 2;
+          // 枠線は1mm内側に別レイヤーで描画
+          if (bStyle !== 'none' && bWidth > 0) {
+              const frame = document.createElement('div');
+              frame.style.position = 'absolute';
+              frame.style.inset = `${PX_PER_MM}px`;
+              frame.style.pointerEvents = 'none';
+              frame.style.borderStyle = bStyle;
+              frame.style.borderWidth = `${bWidth}px`;
+              frame.style.borderColor = borderCol;
+              frame.style.boxSizing = 'border-box';
+              inner.appendChild(frame);
+          }
           inner.style.transform = tr;
           box.appendChild(inner); el.appendChild(box);
+
+      } else if (g.type === 'free-text') {
+          el.style.zIndex = 80; // 塗りつぶしより上に表示
+          const wrap = document.createElement('div'); wrap.className = 'free-text-wrapper';
+          wrap.style.transform = `translate(${g.nudgeX || 0}px, ${g.nudgeY || 0}px)`;
+          const alignMap = {
+              'top-left': ['flex-start','flex-start','left'],
+              'top': ['center','flex-start','center'],
+              'top-right': ['flex-end','flex-start','right'],
+              'left': ['flex-start','center','left'],
+              'center': ['center','center','center'],
+              'right': ['flex-end','center','right'],
+              'bottom-left': ['flex-start','flex-end','left'],
+              'bottom': ['center','flex-end','center'],
+              'bottom-right': ['flex-end','flex-end','right']
+          };
+          const [jc, ai, ta] = alignMap[g.align || 'center'] || ['center','center','center'];
+          wrap.style.justifyContent = jc;
+          wrap.style.alignItems = ai;
+
+          const content = document.createElement('div'); content.className = 'free-text-content';
+          content.style.fontFamily = g.fontFamily || config.fontFamily;
+          content.style.fontWeight = g.fontWeight || 400;
+          content.style.fontSize = (g.fontSize || 24) + 'px';
+          content.style.letterSpacing = (g.letterSpacing || 0) + 'px';
+          content.style.writingMode = (g.writingMode === 'horizontal') ? 'horizontal-tb' : 'vertical-rl';
+          content.style.lineHeight = 1.4;
+          if (g.writingMode === 'horizontal') content.style.textAlign = ta;
+
+          const formatFreeText = (text) => {
+              let t = text || "";
+              if (g.tcyEnabled !== false) {
+                  t = t.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>');
+              }
+              return t.replace(/\n/g, '<br>');
+          };
+          content.innerHTML = formatFreeText(g.text);
+          wrap.appendChild(content);
+          el.appendChild(wrap);
 
       } else if (g.type === 'vline') {
           const box = document.createElement('div'); box.className = 'vline-box';
@@ -3503,7 +3806,11 @@ function updatePaperSize(fromPreset = false) {
               if (nextG) drawLinkLine(g, nextG);
           }
       }
-      el.ondblclick = (e) => { e.stopPropagation(); const root = findRootGroup(g); openEditorHandler(root); };
+      el.ondblclick = (e) => { 
+        e.stopPropagation(); 
+        const root = findRootGroup(g); 
+        selectObject(root.id);
+      };
       hanmen.appendChild(el);
     });
   }
