@@ -3500,11 +3500,13 @@ function updatePaperSize() {
                 const tokens = remainingHTML.match(/(<[^>]+>|[^<])/g) || [];
                 let fitCount = tokens.length;
                 
-                const tolerance = config.baseFontSize + config.lineGap; 
+                const tolerance = config.baseFontSize * 0.3; // Safari対策: はみ出し判定を厳しめに
 
                 while (fitCount > 0) {
                     const tryHTML = tokens.slice(0, fitCount).join(''); measureBox.innerHTML = tryHTML;
-                    if (measureBox.scrollWidth <= measureBox.clientWidth + tolerance) {
+                    const overW = measureBox.scrollWidth - measureBox.clientWidth;
+                    const overH = measureBox.scrollHeight - measureBox.clientHeight;
+                    if (overW <= tolerance && overH <= tolerance) {
                         currentGroup.displayText[i] = tryHTML; remainingHTML = tokens.slice(fitCount).join(''); break;
                     }
                     fitCount--;
