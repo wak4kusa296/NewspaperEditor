@@ -1,6 +1,5 @@
-const CACHE_NAME = 'shinbun-pwa-v2';
+const CACHE_NAME = 'shinbun-pwa-v4';
 const ASSETS = [
-  './index.HTML',
   './index.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -28,7 +27,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('./index.html').then((cached) => cached || caches.match('./index.HTML') || fetch(request))
+      caches.match('./index.html').then((cached) => cached || fetch(request))
     );
     return;
   }
