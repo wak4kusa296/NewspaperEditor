@@ -1426,6 +1426,29 @@ body.preview-mode .article-group { background-color: transparent; }
   let isFreeCreationMode = false; 
   let isDirty = false; // 変更検知
 
+  // ビュー状態（ズーム・パン）を保存／復元するための管理フラグ
+  let hasRestoredCanvasView = false;
+
+  function getCanvasState() {
+      return {
+          viewX,
+          viewY,
+          viewScale,
+          paperW: config.paperW,
+          paperH: config.paperH,
+      };
+  }
+
+  function applyCanvasState(state) {
+      if (!state) return false;
+      const { viewX: vx, viewY: vy, viewScale: vs } = state;
+      const hasValues = [vx, vy, vs].every(v => typeof v === 'number' && isFinite(v));
+      if (!hasValues) return false;
+      viewX = vx; viewY = vy; viewScale = vs;
+      updateTransform();
+      return true;
+  }
+
   const viewport = document.getElementById('viewport');
   const canvasTransform = document.getElementById('canvas-transform');
   const hanmen = document.getElementById('hanmen');
@@ -1610,7 +1633,8 @@ body.preview-mode .article-group { background-color: transparent; }
     }
     
     updatePaperSize(); // サイズ初期化
-    fitView();
+    if (hasRestoredCanvasView) updateTransform();
+    else fitView();
     setTool('hand');
     updateColors();
     isDirty = false;
@@ -1620,16 +1644,18 @@ body.preview-mode .article-group { background-color: transparent; }
   function openFileMenu() { document.getElementById('file-menu-overlay').style.display = 'flex'; }
   function openExportMenu() { document.getElementById('export-menu-overlay').style.display = 'flex'; }
 
-  function saveFile(saveAs) {
-      const data = {
+  function buildSavePayload(customGroups = groups) {
+      return {
           version: "Ver.84",
           timestamp: new Date().toISOString(),
           config: config,
-          groups: groups
+          groups: customGroups,
+          fileName: currentFileName,
+          canvas: getCanvasState()
       };
-      const jsonStr = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonStr], {type: "application/json"});
-      
+  }
+
+  function saveFile(saveAs) {
       let fileName = currentFileName;
       if (saveAs) {
           const input = prompt("ファイル名を入力してください", currentFileName);
@@ -1639,6 +1665,10 @@ body.preview-mode .article-group { background-color: transparent; }
       }
       currentFileName = fileName;
 
+      const data = buildSavePayload();
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], {type: "application/json"});
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1662,8 +1692,11 @@ body.preview-mode .article-group { background-color: transparent; }
                   groups = data.groups;
                   currentFileName = file.name;
                   applyConfigToUI();
+                  hasRestoredCanvasView = applyCanvasState(data.canvas);
                   updatePaperSize();
                   updateColors();
+                  if (!hasRestoredCanvasView) fitView();
+                  else updateTransform();
                   isDirty = false;
                   saveToLocalStorage();
               } else {
@@ -1691,13 +1724,7 @@ body.preview-mode .article-group { background-color: transparent; }
 
   // --- Auto Save (Local Storage) ---
   async function saveToLocalStorage() {
-      const baseData = () => ({
-          version: "Ver.84",
-          timestamp: new Date().toISOString(),
-          config: config,
-          groups: groups,
-          fileName: currentFileName
-      });
+      const baseData = () => buildSavePayload();
       const indicator = (msg = "保存しました") => {
           const ind = document.getElementById('auto-save-indicator');
           if (!ind) return;
@@ -1723,7 +1750,7 @@ body.preview-mode .article-group { background-color: transparent; }
               return { ...g, imageSrc: compressed, originalSrc: compressed, imageInkSrc: null };
           });
           const newGroups = await Promise.all(tasks);
-          const data = { ...baseData(), groups: newGroups, autosaveNote: `compress:${level.label}` };
+          const data = { ...buildSavePayload(newGroups), autosaveNote: `compress:${level.label}` };
           return { data, size: estimateBytes(data), level };
       };
 
@@ -1747,7 +1774,7 @@ body.preview-mode .article-group { background-color: transparent; }
                       const { imageSrc, imageInkSrc, originalSrc, ...rest } = g;
                       return { ...rest, imageSrc: null, imageInkSrc: null, originalSrc: null, hasImageOmitted: true };
                   });
-                  data = { ...baseData(), groups: slimGroups, autosaveNote: "images omitted to fit storage" };
+                  data = { ...buildSavePayload(slimGroups), autosaveNote: "images omitted to fit storage" };
                   size = estimateBytes(data);
                   indicator(`保存しました（画像省略: ${imageGroups.length}件 / 推定 ${Math.round(size/1024)} KB）`);
               } else {
@@ -1773,6 +1800,7 @@ body.preview-mode .article-group { background-color: transparent; }
           currentFileName = data.fileName || "restored_shinbun.json";
           
           applyConfigToUI();
+          hasRestoredCanvasView = applyCanvasState(data.canvas);
           updatePaperSize();
           updateColors();
           isDirty = false;
@@ -2595,6 +2623,12 @@ function updatePaperSize() {
     isMouseDown = true; isDragging = false; 
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
+
+    // 中ボタンは常にパン操作
+    if (e.button === 1) {
+        opMode = 'pan'; startViewX = viewX; startViewY = viewY;
+        viewport.style.cursor = 'grabbing'; deselectAll(); return;
+    }
 
     if (currentTool === 'hand') {
         opMode = 'pan'; startViewX = viewX; startViewY = viewY;
