@@ -1,7 +1,7 @@
 {
   "name": "新聞作成ツール",
   "short_name": "新聞作成",
-  "start_url": "./index.HTML",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fcfcfc",
