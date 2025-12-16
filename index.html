@@ -666,33 +666,6 @@ body.preview-mode .article-group { background-color: transparent; }
       paint-order: stroke fill;
   }
 
-  .header-info-area {
-      width: 100%; 
-      height: auto; 
-      flex: 0 0 auto;
-      display: flex; 
-      flex-direction: column; 
-      font-size: calc(var(--base-font-size) * 0.5);
-      line-height: 1.2;
-      padding: 4px; box-sizing: border-box;
-      justify-content: flex-start;
-      align-items: flex-start; 
-      text-align: left;
-      color: var(--text-color);
-      writing-mode: horizontal-tb; 
-      background-color: var(--paper-color);
-      gap: 2px;
-      overflow: hidden;
-  }
-  
-  .header-info-item {
-      display: block; 
-      white-space: normal; 
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      width: 100%;
-  }
-
   /* --- エディタ・モーダル関連 --- */
   .inline-editor {
     position: absolute; z-index: 9999; writing-mode: vertical-rl;
@@ -1206,20 +1179,6 @@ body.preview-mode .article-group { background-color: transparent; }
 
     <div class="ui-row"><label>余白(上下)</label><input type="range" min="0" max="100" value="10" id="hdr-pad-v" oninput="updateHeaderAttr()"></div>
     <div class="ui-row"><label>余白(左右)</label><input type="range" min="0" max="100" value="5" id="hdr-pad-h" oninput="updateHeaderAttr()"></div>
-
-    <div class="ui-header">発行情報</div>
-    <div class="ui-row"><label>発行者</label><input type="text" id="hdr-publisher" oninput="updateHeaderAttr()" placeholder="発行所"></div>
-    <div class="ui-row"><label>所在地</label><input type="text" id="hdr-address" oninput="updateHeaderAttr()" placeholder="所在地"></div>
-    <div class="ui-row"><label>連絡先</label><input type="text" id="hdr-contact" oninput="updateHeaderAttr()" placeholder="連絡先"></div>
-    <div class="ui-row"><label>号数</label><input type="text" id="hdr-issue" oninput="updateHeaderAttr()" placeholder="第〇〇号"></div>
-    <div class="ui-row">
-      <label>フォント</label>
-      <select id="hdr-info-font" class="font-selector" onchange="updateHeaderAttr()"></select>
-    </div>
-    <div class="ui-row">
-        <label>サイズ</label>
-        <input type="range" min="5" max="24" value="12" id="hdr-info-size" oninput="updateHeaderAttr()">
-    </div>
 
     <div class="ui-header">枠位置</div>
     <div class="nudge-pad">
@@ -2289,15 +2248,6 @@ function updatePaperSize(fromPreset = false) {
       
       g.text = document.getElementById('hdr-title').value;
       g.fontFamily = document.getElementById('hdr-font').value;
-      
-      g.publisher = document.getElementById('hdr-publisher').value;
-      g.address = document.getElementById('hdr-address').value;
-      g.contact = document.getElementById('hdr-contact').value;
-      g.issue = document.getElementById('hdr-issue').value;
-      
-      g.infoFont = document.getElementById('hdr-info-font').value;
-      g.infoSize = parseInt(document.getElementById('hdr-info-size').value);
-      
       g.isTitleInverted = document.getElementById('hdr-text-inverted').checked;
       g.titleStrokeWidth = parseFloat(document.getElementById('hdr-text-stroke').value);
 
@@ -2837,32 +2787,40 @@ function updatePaperSize(fromPreset = false) {
         } else {
             unitH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header') ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
         }
-        
-        let finalY, snH;
-        if (hPos.y < anchorSnapY) {
-            finalY = anchorSnapY; snH = unitH;
+        let finalY = anchorSnapY, snH = unitH;
+        // 縦方向: 原点をまたいだら1段上にシフトした上で選択
+        const goingUp = hPos.y < anchorSnapY;
+        const charStep = config.baseFontSize * SCALE_Y;
+        const upOffset = (currentTool === 'box') ? charStep : 0; // 記事は1文字分上を基準、他はオフセットなし
+        const baseY = goingUp ? (anchorSnapY - upOffset) : anchorSnapY;
+        const distY = Math.abs(hPos.y - baseY);
+        let dc = Math.ceil(distY / unitH); if (dc < 1) dc = 1;
+        if (currentTool === 'box') {
+            snH = isFreeCreationMode ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
         } else {
-            let distY = hPos.y - anchorSnapY;
-            let dc = Math.ceil(distY / unitH); if (dc < 1) dc = 1;
-            
-            if (currentTool === 'box') {
-                snH = isFreeCreationMode ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
-            } else {
-                snH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header') ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
-            }
-            finalY = anchorSnapY;
+            snH = (currentTool === 'correction' || currentTool === 'image' || currentTool === 'headline' || currentTool === 'header') ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
         }
+        // 上方向は基準から高さ分上に置く（記事は2文字分上が基準）、下方向は基準に下ろす
+        finalY = goingUp ? (baseY - snH) : baseY;
 
-        let finalX, snW;
-        if (hPos.x > fixedRight) {
-             snW = config.baseFontSize; finalX = anchorSnapX;
-        } else {
-             const colRight = getColIndex(fixedRight - 1); 
-             const colCurrent = getColIndex(hPos.x);
-             const cols = Math.max(1, colCurrent - colRight + 1);
-             snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
-             finalX = fixedRight - snW;
-        }
+        let finalX = anchorSnapX, snW = config.baseFontSize;
+        // 横方向: 原点をまたいだら1列右にシフトした上で選択
+        const baseXRaw = hPos.x > anchorSnapX ? (anchorSnapX + linePitch) : anchorSnapX; // 右方向は1文字右を基準
+        const anchorCol = getColIndex(baseXRaw);
+        const currCol = getColIndex(hPos.x);
+        const maxCol = Math.max(anchorCol, currCol);
+        const minCol = Math.min(anchorCol, currCol);
+        const cols = Math.max(1, maxCol - minCol + 1);
+        snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
+        // 左端は左側(大きい列番号)に合わせる
+        finalX = hanmen.clientWidth - (maxCol * linePitch) - config.baseFontSize;
+
+        // 強制スナップ（整数ピクセルに丸めてブレを抑える）
+        finalX = Math.round(finalX);
+        finalY = Math.round(finalY);
+        snW = Math.round(snW);
+        snH = Math.round(snH);
+
         ghost.style.left = finalX + 'px'; ghost.style.top = finalY + 'px';
         ghost.style.width = snW + 'px'; ghost.style.height = snH + 'px';
 
@@ -3023,13 +2981,8 @@ function updatePaperSize(fromPreset = false) {
         newGroup.type = 'header'; newGroup.h = h; 
         newGroup.text = "空想新聞"; 
         newGroup.fontFamily = '"Shippori Mincho", serif'; 
+        newGroup.fontWeight = 900;
         newGroup.pattern = "pat-lines"; 
-        newGroup.publisher = "空想新聞社";
-        newGroup.address = "空想都市・西ブロック221B"; 
-        newGroup.contact = "000-0000-0000"; 
-        newGroup.issue = "第00001号";
-        newGroup.infoFont = '"Noto Sans JP", sans-serif';
-        newGroup.infoSize = 12; 
         
         newGroup.isTitleInverted = false;
         // デフォルトで袋文字を少しつける
@@ -3087,14 +3040,6 @@ function updatePaperSize(fromPreset = false) {
          switchPanel('panel-header');
          document.getElementById('hdr-title').value = g.text;
          document.getElementById('hdr-font').value = g.fontFamily || config.fontFamily;
-         
-         document.getElementById('hdr-publisher').value = g.publisher || "";
-         document.getElementById('hdr-address').value = g.address || "";
-         document.getElementById('hdr-contact').value = g.contact || "";
-         document.getElementById('hdr-issue').value = g.issue;
-         
-         document.getElementById('hdr-info-font').value = g.infoFont || '"Noto Sans JP", sans-serif';
-         document.getElementById('hdr-info-size').value = g.infoSize || 12;
 
          document.getElementById('hdr-text-inverted').checked = (g.isTitleInverted === true);
          document.getElementById('hdr-text-stroke').value = g.titleStrokeWidth || 0;
@@ -3185,11 +3130,7 @@ function updatePaperSize(fromPreset = false) {
 
   function openEditorHandler(g) {
       if (document.body.classList.contains('preview-mode') || currentTool === 'hand') return;
-      if (g.type === 'article') {
-          openInlineEditor(g);
-      } else {
-          openOverlayEditor(g);
-      }
+      openOverlayEditor(g);
   }
 
   function openInlineEditor(group) {
@@ -3364,6 +3305,7 @@ function updatePaperSize(fromPreset = false) {
           titleBoxInner.style.borderWidth = (g.borderIn !== undefined ? g.borderIn : 1) + 'px';
           titleBoxInner.style.borderColor = config.textColor;
           titleBoxInner.style.color = config.textColor; // パターン用に色を継承
+          titleBoxInner.style.padding = `${g.titlePadV || 10}px ${g.titlePadH || 5}px`;
 
           // 地紋パターン
           if (true) {
@@ -3384,6 +3326,7 @@ function updatePaperSize(fromPreset = false) {
           const titleText = document.createElement('div'); titleText.className = 'header-title-text';
           titleText.innerText = g.text;
           titleText.style.fontFamily = g.fontFamily || config.fontFamily;
+          titleText.style.fontWeight = g.fontWeight || 900;
           
           // 色設定 (反転ロジック)
           const isTitleInverted = g.isTitleInverted === true;
@@ -3401,42 +3344,37 @@ function updatePaperSize(fromPreset = false) {
           const padV = g.titlePadV || 10;
           const padH = g.titlePadH || 5;
           
-          // DOMに追加してinfoAreaの高さを確定させる
           titleBoxInner.appendChild(titleText);
           titleBoxOuter.appendChild(titleBoxInner);
           box.appendChild(titleBoxOuter);
 
-          const infoArea = document.createElement('div'); infoArea.className = 'header-info-area';
-          infoArea.style.borderColor = config.textColor;
-          infoArea.style.fontFamily = g.infoFont || '"Noto Sans JP", sans-serif';
-          infoArea.style.color = config.textColor;
-          const infoFontSize = g.infoSize || 12;
-          infoArea.style.fontSize = infoFontSize + 'pt';
-          
-          let items = [];
-          if(g.publisher) items.push(g.publisher);
-          if(g.address) items.push(g.address);
-          if(g.contact) items.push(g.contact);
-          if(g.issue) items.push(g.issue);
-          
-          infoArea.innerHTML = items.map(t => `<span class="header-info-item">${t}</span>`).join("");
-          
-          box.appendChild(infoArea);
           el.appendChild(box);
           
-          // 簡易計算 (ループ内での計測は正確ではないが、高さ確保のため)
-          const estimatedInfoH = items.length * (infoFontSize * 1.33 * 1.2 + 2) + 8; // 概算
-          
           const availW = Math.max(10, g.w - (borderSpace * 2) - (padH * 2));
-          const availH = Math.max(10, totalH - estimatedInfoH - (borderSpace * 2) - (padV * 2));
+          const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
+          const isVertical = availH > availW;
           
-          const fontSize = availW; 
+          titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+          
+          const shortSide = isVertical ? availW : availH;
+          const longSide = isVertical ? availH : availW;
+          const fontSize = shortSide;
           titleText.style.fontSize = fontSize + 'px';
-          
-          const textLen = g.text.length * fontSize;
-          let scaleY = (textLen > 0) ? (availH / textLen) : 1.0;
 
-          titleText.style.transform = `translate(${g.titleNudgeX || 0}px, ${g.titleNudgeY || 0}px) scale(1, ${scaleY})`;
+          hlMeasureBox.innerText = g.text;
+          hlMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
+          hlMeasureBox.style.fontWeight = g.fontWeight || 900;
+          hlMeasureBox.style.fontSize = fontSize + 'px';
+          hlMeasureBox.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+
+          const measuredLong = isVertical ? hlMeasureBox.offsetHeight : hlMeasureBox.offsetWidth;
+          const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
+
+          const translateX = g.titleNudgeX || 0;
+          const translateY = g.titleNudgeY || 0;
+          titleText.style.transform = isVertical
+              ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
+              : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
