@@ -1572,6 +1572,7 @@ body.preview-mode .article-group { background-color: transparent; }
   let editingGroupId = null; 
   let isFreeCreationMode = false; 
   let isDirty = false; // 変更検知
+  let pointerMovedSinceDown = false;
 
   // ビュー状態（ズーム・パン）を保存／復元するための管理フラグ
   let hasRestoredCanvasView = false;
@@ -2880,6 +2881,7 @@ function updateFreeTextAttr() {
     lastTapTargetId = null;
 
     isMouseDown = true; isDragging = false; 
+    pointerMovedSinceDown = false;
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
@@ -2995,6 +2997,11 @@ function updateFreeTextAttr() {
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (activePointerId !== null && e.pointerId === undefined) return;
     if (!isMouseDown) return;
+    if (!pointerMovedSinceDown && typeof startX === 'number') {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (dx !== 0 || dy !== 0) pointerMovedSinceDown = true;
+    }
     if (!isDragging) {
         if (Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2)) < DRAG_THRESHOLD) return;
         isDragging = true;
@@ -3165,7 +3172,7 @@ function updateFreeTextAttr() {
 
         if (e.target.closest('.resize-handle') || e.target.closest('.port')) {
             // Handle/port clicks are managed by other logic, do nothing here.
-        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode')) {
+        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode') && !pointerMovedSinceDown) {
             const g = groups.find(item => item.id === targetId);
             if (g) {
                 // All editable types now use the overlay editor
