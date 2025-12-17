@@ -62,10 +62,13 @@
     --ui-active-text: #ffffff;
   }
 
+  html {
+    height: 100%; background-color: #f0f0f0;
+  }
   body {
     background-color: #f0f0f0; margin: 0; padding: 0;
     font-family: "Noto Sans JP", sans-serif;
-    height: 100vh; width: 100vw; overflow: hidden;
+    min-height: 100vh; width: 100vw; overflow: hidden;
     user-select: none; touch-action: none; 
   }
 
@@ -87,6 +90,47 @@
     padding: 20px 0;
     box-sizing: border-box;
     overflow-y: auto; /* 小さい画面でもスクロール可能に */
+  }
+
+  #launch-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, #080808, #151515);
+    color: #f7f7f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 4000;
+    font-family: "Noto Sans JP", sans-serif;
+    text-align: center;
+    padding: 20px;
+    transition: opacity 0.4s ease;
+  }
+  #launch-screen.loaded {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #launch-screen .content {
+    max-width: 280px;
+  }
+  #launch-screen h1 {
+    margin: 0; font-size: 22px; letter-spacing: 0.4px;
+  }
+  #launch-screen .subtitle {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #c6c6c6;
+  }
+  #launch-screen .launch-spinner {
+    margin: 18px auto 0;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.15);
+    border-top-color: #ffcc33;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .tool-group {
@@ -830,8 +874,16 @@ body.preview-mode .article-group { background-color: transparent; }
   #headline-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
 
 </style>
+  
 </head>
 <body class="tool-hand"> 
+<div id="launch-screen">
+  <div class="content">
+    <h1>新聞作成ツール</h1>
+    <div class="subtitle">起動中… 準備が整い次第スタートします</div>
+    <div class="launch-spinner"></div>
+  </div>
+</div>
 
 <!-- SVGフィルタ動的格納用 -->
 <div id="svg-filters-container" style="position: absolute; width: 0; height: 0; overflow: hidden;">
@@ -1042,8 +1094,8 @@ body.preview-mode .article-group { background-color: transparent; }
     </div>
 
     <div class="ui-header">余白</div>
-    <div class="ui-row"><label>上</label><input type="number" id="margin-top" value="30" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
-    <div class="ui-row"><label>下</label><input type="number" id="margin-bottom" value="30" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
+    <div class="ui-row"><label>上</label><input type="number" id="margin-top" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
+    <div class="ui-row"><label>下</label><input type="number" id="margin-bottom" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
     <div class="ui-row"><label>左</label><input type="number" id="margin-left" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
     <div class="ui-row"><label>右</label><input type="number" id="margin-right" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
 
@@ -1605,6 +1657,15 @@ body.preview-mode .article-group { background-color: transparent; }
       return hasView;
   }
 
+  function hideLaunchScreen() {
+      const screen = document.getElementById('launch-screen');
+      if (!screen) return;
+      screen.classList.add('loaded');
+      setTimeout(() => {
+          if (screen.parentNode) screen.parentNode.removeChild(screen);
+      }, 500);
+  }
+
   const viewport = document.getElementById('viewport');
   const canvasTransform = document.getElementById('canvas-transform');
   const hanmen = document.getElementById('hanmen');
@@ -1795,6 +1856,7 @@ body.preview-mode .article-group { background-color: transparent; }
     setTool('hand');
     updateColors();
     isDirty = false;
+    hideLaunchScreen();
   }
 
   // --- ファイル操作 ---
