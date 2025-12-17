@@ -1695,6 +1695,9 @@ body.preview-mode .article-group { background-color: transparent; }
     window.visualViewport.addEventListener('resize', updateAppHeightDeferred);
     window.visualViewport.addEventListener('scroll', updateAppHeightDeferred);
   }
+  document.addEventListener('focusout', () => {
+    setTimeout(updateAppHeight, 200);
+  }, true);
   updateAppHeightDeferred();
   function clearPortHighlights() { document.querySelectorAll('.port').forEach(p => p.classList.remove('link-mode-compatible','port-hovered')); }
   function highlightCompatiblePorts(sourceId) {
