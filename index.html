@@ -1703,6 +1703,12 @@ body.preview-mode .article-group { background-color: transparent; }
   window.addEventListener('orientationchange', () => {
     setTimeout(setInitialViewportVars, 300);
   });
+  document.addEventListener('focusin', () => {
+    window.scrollTo(0, 0);
+  });
+  document.addEventListener('focusout', () => {
+    window.scrollTo(0, 0);
+  });
   function clearPortHighlights() { document.querySelectorAll('.port').forEach(p => p.classList.remove('link-mode-compatible','port-hovered')); }
   function highlightCompatiblePorts(sourceId) {
       clearPortHighlights();
