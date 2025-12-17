@@ -1567,6 +1567,8 @@ body.preview-mode .article-group { background-color: transparent; }
   let isFreeCreationMode = false; 
   let isDirty = false; // 変更検知
   let pointerMovedSinceDown = false;
+  let selectionMovedSinceDown = false;
+  let pointerStartRect = null;
 
   // ビュー状態（ズーム・パン）を保存／復元するための管理フラグ
   let hasRestoredCanvasView = false;
@@ -2872,6 +2874,7 @@ function updateFreeTextAttr() {
 
     isMouseDown = true; isDragging = false; 
     pointerMovedSinceDown = false;
+    selectionMovedSinceDown = false;
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
@@ -2916,6 +2919,7 @@ function updateFreeTextAttr() {
         const groupEl = e.target.closest('.article-group');
         targetId = groupEl.dataset.id;
         const g = groups.find(item => item.id === targetId);
+        if (g) pointerStartRect = captureGroupMetrics(g);
         anchorRight = g.x + g.w; anchorTop = g.y;
         return;
     }
@@ -2930,6 +2934,7 @@ function updateFreeTextAttr() {
             dragStartY = hPos.y;
             initialElemX = tgt.x;
             initialElemY = tgt.y;
+            pointerStartRect = captureGroupMetrics(tgt);
         }
         return;
     }
@@ -3081,6 +3086,7 @@ function updateFreeTextAttr() {
         }
 
     } else if (opMode === 'move') {
+        selectionMovedSinceDown = true;
         let newX = initialElemX + hPos.x - dragStartX;
         let newY = initialElemY + hPos.y - dragStartY;
         const g = groups.find(item => item.id === targetId);
@@ -3097,6 +3103,7 @@ function updateFreeTextAttr() {
         }
 
     } else if (opMode === 'resize') {
+        selectionMovedSinceDown = true;
         const g = groups.find(item => item.id === targetId);
         
         // 記事のフリーレイアウト対応
@@ -3162,7 +3169,7 @@ function updateFreeTextAttr() {
 
         if (e.target.closest('.resize-handle') || e.target.closest('.port')) {
             // Handle/port clicks are managed by other logic, do nothing here.
-        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode') && !pointerMovedSinceDown) {
+        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode') && !pointerMovedSinceDown && !selectionMovedSinceDown) {
             const g = groups.find(item => item.id === targetId);
             if (g) {
                 // All editable types now use the overlay editor
@@ -3198,6 +3205,14 @@ function updateFreeTextAttr() {
                         g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
                     }
                 }
+                if (pointerStartRect && g) {
+                    const finalRect = captureGroupMetrics(g);
+                    if (finalRect && finalRect.x === pointerStartRect.x && finalRect.y === pointerStartRect.y &&
+                        finalRect.w === pointerStartRect.w && finalRect.h === pointerStartRect.h) {
+                        selectionMovedSinceDown = false;
+                    }
+                }
+                pointerStartRect = null;
                 renderGroups(); selectObject(targetId);
             }
         }
@@ -3239,6 +3254,12 @@ function updateFreeTextAttr() {
   function getColIndex(rawX) {
       let col = Math.floor((hanmen.clientWidth - rawX) / linePitch);
       return Math.max(0, col);
+  }
+
+  function captureGroupMetrics(g) {
+      if (!g) return null;
+      const hVal = (g.h !== undefined) ? g.h : ((g.danCount || 1) * physicalHDan) + (((g.danCount || 1) - 1) * physicalHGap);
+      return { x: g.x, y: g.y, w: g.w, h: hVal };
   }
   
   function calculateSnapPoint(rawX, rawY, type, obj = null) {
