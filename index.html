@@ -2973,7 +2973,8 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1) { // Middle mouse button always behaves as hand tool
+    if (e.which === 2) { // Middle mouse button always behaves as hand tool
+        e.preventDefault();
         if (currentTool !== 'hand') previousToolOnMiddle = currentTool;
         else previousToolOnMiddle = null;
         setTool('hand');
@@ -3254,7 +3255,7 @@ function updateFreeTextAttr() {
     }
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (!isMouseDown) return; isMouseDown = false; activePointerId = null;
-    if (e.button === 1 && previousToolOnMiddle) {
+    if (e.which === 2 && previousToolOnMiddle) {
         setTool(previousToolOnMiddle);
         previousToolOnMiddle = null;
     }
@@ -3726,6 +3727,10 @@ function updateFreeTextAttr() {
              hlMeasureBox.innerHTML = htmlText; 
              hlMeasureBox.style.fontFamily = g.fontFamily; hlMeasureBox.style.fontWeight = g.fontWeight;
              hlMeasureBox.style.fontSize = shortSide + 'px';
+             
+             // Safari rendering bug workaround: Force reflow before measuring
+             const _ = document.body.offsetHeight;
+
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
