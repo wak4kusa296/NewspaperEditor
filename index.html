@@ -19,7 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
-:root {
+  :root {
     /* === 基本設定 === */
     --base-font-size: 24px; 
     --line-gap: 12px;
@@ -27,7 +27,6 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
-    --app-height: 100vh;
     
     /* 用紙サイズ (JSで制御) */
     --paper-w: 297mm;
@@ -69,7 +68,7 @@
   body {
     background-color: #f0f0f0; margin: 0; padding: 0;
     font-family: "Noto Sans JP", sans-serif;
-    min-height: 100vh; width: 100vw; height: var(--app-height); overflow: hidden;
+    min-height: 100vh; width: 100vw; height: 100vh; overflow: hidden;
     user-select: none; touch-action: none; 
   }
 
@@ -1680,25 +1679,6 @@ body.preview-mode .article-group { background-color: transparent; }
   const root = document.documentElement;
   const overflowStatusText = document.getElementById('overflow-status-text');
   const svgFiltersContainer = document.getElementById('svg-filters-container');
-  function updateAppHeight() {
-    const viewport = window.visualViewport;
-    const height = viewport ? viewport.height : window.innerHeight;
-    root.style.setProperty('--app-height', `${height}px`);
-  }
-  function updateAppHeightDeferred() {
-    updateAppHeight();
-    setTimeout(updateAppHeight, 150);
-  }
-  window.addEventListener('resize', updateAppHeightDeferred);
-  window.addEventListener('orientationchange', updateAppHeightDeferred);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', updateAppHeightDeferred);
-    window.visualViewport.addEventListener('scroll', updateAppHeightDeferred);
-  }
-  document.addEventListener('focusout', () => {
-    setTimeout(updateAppHeight, 200);
-  }, true);
-  updateAppHeightDeferred();
   function clearPortHighlights() { document.querySelectorAll('.port').forEach(p => p.classList.remove('link-mode-compatible','port-hovered')); }
   function highlightCompatiblePorts(sourceId) {
       clearPortHighlights();
