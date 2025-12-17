@@ -27,6 +27,11 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+    --safe-top-init: var(--safe-top);
+    --safe-right-init: var(--safe-right);
+    --safe-bottom-init: var(--safe-bottom);
+    --safe-left-init: var(--safe-left);
+    --initial-vh: 100vh;
     --initial-safe-top: var(--safe-top);
     --initial-safe-bottom: var(--safe-bottom);
     --initial-vh: 100vh;
@@ -84,8 +89,8 @@
 
   /* --- 左サイドバー (ツールバー) --- */
   .toolbar-container {
-    position: fixed; top: var(--safe-top); bottom: var(--safe-bottom);
-    left: var(--safe-left); width: 80px; 
+    position: fixed; top: var(--safe-top-init); bottom: var(--safe-bottom-init);
+    left: var(--safe-left-init); width: 80px; 
     z-index: 2000;
     background: var(--ui-bg);
     border-right: 1px solid var(--ui-border);
@@ -228,7 +233,7 @@
   
   /* --- 右サイドバー (設定パネル) --- */
   .settings-panel {
-    position: fixed; right: var(--safe-right); top: var(--safe-top); bottom: var(--safe-bottom);
+    position: fixed; right: var(--safe-right-init); top: var(--safe-top-init); bottom: var(--safe-bottom-init);
     width: 320px;
     z-index: 2000;
     background: var(--ui-bg); color: var(--ui-text); 
@@ -457,10 +462,10 @@
   /* --- ビューポート --- */
   #viewport {
     position: absolute; 
-    top: var(--initial-safe-top); 
-    left: calc(80px + var(--safe-left)); 
-    right: calc(320px + var(--safe-right));
-    height: calc(var(--initial-vh) - var(--initial-safe-top) - var(--initial-safe-bottom));
+    top: var(--safe-top-init); 
+    left: calc(80px + var(--safe-left-init)); 
+    right: calc(320px + var(--safe-right-init));
+    height: calc(var(--initial-vh) - var(--safe-top-init) - var(--safe-bottom-init));
     overflow: hidden; 
     background: #f0f0f0; 
     cursor: default;
@@ -1686,8 +1691,12 @@ body.preview-mode .article-group { background-color: transparent; }
     const computed = getComputedStyle(root);
     const safeTop = computed.getPropertyValue('--safe-top') || '0px';
     const safeBottom = computed.getPropertyValue('--safe-bottom') || '0px';
-    root.style.setProperty('--initial-safe-top', safeTop);
-    root.style.setProperty('--initial-safe-bottom', safeBottom);
+    const safeLeft = computed.getPropertyValue('--safe-left') || '0px';
+    const safeRight = computed.getPropertyValue('--safe-right') || '0px';
+    root.style.setProperty('--safe-top-init', safeTop);
+    root.style.setProperty('--safe-bottom-init', safeBottom);
+    root.style.setProperty('--safe-left-init', safeLeft);
+    root.style.setProperty('--safe-right-init', safeRight);
     root.style.setProperty('--initial-vh', `${window.innerHeight}px`);
   }
   setInitialViewportVars();
