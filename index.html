@@ -3535,9 +3535,106 @@ function updateFreeTextAttr() {
     closeInlineEditor();
   }
   
+  function calculateSingleBoxCapacity(group) {
+      // 単一のボックスの容量を計算（キャッシュ付き）
+      if (group.type !== 'article') return 0;
+
+      // キャッシュキーを生成
+      const cacheKey = `${group.w}_${group.danCount}_${group.freeLayout}_${group.h}_${config.baseFontSize}_${config.lineGap}_${config.fontFamily}_${config.fontWeight}`;
+
+      // キャッシュがあればそれを返す
+      if (group._capacityCache !== undefined && group._capacityCacheKey === cacheKey) {
+          return group._capacityCache;
+      }
+
+      let loopCount = (group.freeLayout) ? 1 : group.danCount;
+      let currentSegHeight = (group.freeLayout && group.h) ? (group.h / SCALE_Y) : baseHDan;
+
+      // 十分に長いテキストを用意（1段で収まる最大文字数を推定）
+      const estimatedMax = 1000;
+
+      measureBox.style.fontSize = config.baseFontSize + 'px';
+      measureBox.style.lineHeight = (config.baseFontSize + config.lineGap) + 'px';
+      measureBox.style.fontFamily = config.fontFamily;
+      measureBox.style.fontWeight = config.fontWeight;
+
+      let totalCapacity = 0;
+
+      for (let i = 0; i < loopCount; i++) {
+          const segWidth = group.w;
+          const segHeight = currentSegHeight;
+
+          measureBox.style.width = segWidth + 'px';
+          measureBox.style.height = segHeight + 'px';
+
+          // 二分探索で収まる最大文字数を探す
+          let left = 0;
+          let right = estimatedMax;
+          let maxFit = 0;
+
+          const tolerance = Math.max(config.baseFontSize * 0.6, config.lineGap * 0.5);
+
+          while (left <= right) {
+              const mid = Math.floor((left + right) / 2);
+              measureBox.innerHTML = 'あ'.repeat(mid);
+
+              const overW = measureBox.scrollWidth - measureBox.clientWidth;
+              const overH = measureBox.scrollHeight - measureBox.clientHeight;
+
+              if (overW <= tolerance && overH <= tolerance) {
+                  maxFit = mid;
+                  left = mid + 1;
+              } else {
+                  right = mid - 1;
+              }
+          }
+
+          totalCapacity += maxFit;
+      }
+
+      measureBox.innerHTML = '';
+
+      // キャッシュに保存
+      group._capacityCache = totalCapacity;
+      group._capacityCacheKey = cacheKey;
+
+      return totalCapacity;
+  }
+
+  function calculateMaxCapacity(rootGroup) {
+      // チェーン全体の容量を計算
+      if (rootGroup.type !== 'article') return 0;
+
+      let totalCapacity = 0;
+      let currentGroup = rootGroup;
+
+      // チェーンをたどって全ボックスの容量を合計
+      while (currentGroup) {
+          totalCapacity += calculateSingleBoxCapacity(currentGroup);
+          currentGroup = currentGroup.next ? groups.find(g => g.id === currentGroup.next) : null;
+      }
+
+      return totalCapacity;
+  }
+
   function updateOverflowStatus(group) {
-      if(group.overflowCount > 0) overflowStatusText.innerHTML = `<span class="overflow-warning">あふれ: ${group.overflowCount} 文字</span>`;
-      else overflowStatusText.innerHTML = `<span class="overflow-ok">OK (収まっています)</span>`;
+      // チェーンのルートを見つける
+      let root = group;
+      while (true) {
+          const parent = groups.find(g => g.next === root.id);
+          if (!parent) break;
+          root = parent;
+      }
+
+      // 実際に測定して表示
+      const totalInputChars = root.text.length;
+      const maxCapacity = calculateMaxCapacity(root);
+
+      if(root.overflowCount > 0) {
+          overflowStatusText.innerHTML = `<span class="overflow-warning">入った文字数: ${totalInputChars} / 入力可能文字数: ${maxCapacity} (あふれ: ${root.overflowCount})</span>`;
+      } else {
+          overflowStatusText.innerHTML = `<span class="overflow-ok">入った文字数: ${totalInputChars} / 入力可能文字数: ${maxCapacity}</span>`;
+      }
   }
 
   function saveHistory() {
@@ -3601,6 +3698,22 @@ function updateFreeTextAttr() {
 
     editor.onblur = function() { closeInlineEditor(); };
     editor.onkeydown = (e) => { if (e.key === 'Escape') closeInlineEditor(); };
+    editor.oninput = function() {
+        // 入力内容が変わったら即座に再計算・反映
+        group.text = editor.value;
+        reflowText(); // テキストを再計算
+        updateOverflowStatus(group); // ステータスを即座に更新
+
+        // 視覚的な更新（あふれ表示など）のために該当要素のみ更新
+        const el = document.querySelector(`.article-group[data-id="${group.id}"]`);
+        if (el) {
+            if (group.overflowCount > 0) {
+                el.classList.add('has-overflow');
+            } else {
+                el.classList.remove('has-overflow');
+            }
+        }
+    };
     hanmen.appendChild(editor); editor.focus();
   }
 
@@ -3626,6 +3739,27 @@ function updateFreeTextAttr() {
     const overlay = document.getElementById('editor-overlay');
     const ta = document.getElementById('editor-textarea');
     ta.value = group.text;
+
+    // 既存のinputリスナーを削除してから新しいものを追加
+    ta.oninput = function() {
+        const g = groups.find(i => i.id === editingGroupId);
+        if (g) {
+            g.text = ta.value;
+            reflowText(); // テキストを再計算
+            updateOverflowStatus(g); // ステータスを即座に更新
+
+            // 視覚的な更新（あふれ表示など）のために該当要素のみ更新
+            const el = document.querySelector(`.article-group[data-id="${g.id}"]`);
+            if (el) {
+                if (g.overflowCount > 0) {
+                    el.classList.add('has-overflow');
+                } else {
+                    el.classList.remove('has-overflow');
+                }
+            }
+        }
+    };
+
     overlay.style.display = 'flex'; ta.focus();
   }
   function saveOverlayEditor() {
