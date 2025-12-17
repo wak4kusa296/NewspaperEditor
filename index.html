@@ -2905,7 +2905,7 @@ function updateFreeTextAttr() {
   }, { passive: false });
 
   viewport.addEventListener('contextmenu', e => {
-    if (e.button === 1) e.preventDefault();
+    if (e.button === 1 || e.button === 2) e.preventDefault();
   });
 
   function screenToHanmen(sx, sy) {
@@ -2979,14 +2979,16 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1) { // Middle mouse button
+    if (e.button === 1 || e.button === 2) { // Middle or Right mouse button
         e.preventDefault();
-        opMode = 'pan'; // Set opMode directly to 'pan' without changing the tool
-        startViewX = viewX; 
+        opMode = 'pan';
+        startX = e.clientX;
+        startY = e.clientY;
+        startViewX = viewX;
         startViewY = viewY;
         viewport.style.cursor = 'grabbing';
-        isMouseDown = true; // Explicitly set mouse down state
-        return; // Prevent other pointerdown logic
+        isMouseDown = true;
+        return;
     }
 
     if (currentTool === 'hand') {
