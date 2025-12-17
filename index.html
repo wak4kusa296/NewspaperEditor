@@ -1568,7 +1568,6 @@ body.preview-mode .article-group { background-color: transparent; }
   let isDirty = false; // 変更検知
   let pointerMovedSinceDown = false;
   let selectionMovedSinceDown = false;
-  let pointerStartRect = null;
 
   // ビュー状態（ズーム・パン）を保存／復元するための管理フラグ
   let hasRestoredCanvasView = false;
@@ -2913,13 +2912,12 @@ function updateFreeTextAttr() {
         tempLinkLine.style.display = 'none';
         linkingSourceId = null; linkingSourceType = null; opMode = 'none';
     }
-    
+
     if (e.target.classList.contains('resize-handle')) {
         opMode = 'resize';
         const groupEl = e.target.closest('.article-group');
         targetId = groupEl.dataset.id;
         const g = groups.find(item => item.id === targetId);
-        if (g) pointerStartRect = captureGroupMetrics(g);
         anchorRight = g.x + g.w; anchorTop = g.y;
         return;
     }
@@ -2934,7 +2932,6 @@ function updateFreeTextAttr() {
             dragStartY = hPos.y;
             initialElemX = tgt.x;
             initialElemY = tgt.y;
-            pointerStartRect = captureGroupMetrics(tgt);
         }
         return;
     }
@@ -3205,14 +3202,6 @@ function updateFreeTextAttr() {
                         g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
                     }
                 }
-                if (pointerStartRect && g) {
-                    const finalRect = captureGroupMetrics(g);
-                    if (finalRect && finalRect.x === pointerStartRect.x && finalRect.y === pointerStartRect.y &&
-                        finalRect.w === pointerStartRect.w && finalRect.h === pointerStartRect.h) {
-                        selectionMovedSinceDown = false;
-                    }
-                }
-                pointerStartRect = null;
                 renderGroups(); selectObject(targetId);
             }
         }
@@ -3256,12 +3245,6 @@ function updateFreeTextAttr() {
       return Math.max(0, col);
   }
 
-  function captureGroupMetrics(g) {
-      if (!g) return null;
-      const hVal = (g.h !== undefined) ? g.h : ((g.danCount || 1) * physicalHDan) + (((g.danCount || 1) - 1) * physicalHGap);
-      return { x: g.x, y: g.y, w: g.w, h: hVal };
-  }
-  
   function calculateSnapPoint(rawX, rawY, type, obj = null) {
     let unitH;
     
