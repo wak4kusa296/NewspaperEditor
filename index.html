@@ -89,8 +89,8 @@
 
   /* --- 左サイドバー (ツールバー) --- */
   .toolbar-container {
-    position: fixed; top: var(--safe-top-init); bottom: var(--safe-bottom-init);
-    left: var(--safe-left-init); width: 80px; 
+    position: fixed; top: var(--safe-top); bottom: var(--safe-bottom);
+    left: var(--safe-left); width: 80px; 
     z-index: 2000;
     background: var(--ui-bg);
     border-right: 1px solid var(--ui-border);
@@ -233,7 +233,7 @@
   
   /* --- 右サイドバー (設定パネル) --- */
   .settings-panel {
-    position: fixed; right: var(--safe-right-init); top: var(--safe-top-init); bottom: var(--safe-bottom-init);
+    position: fixed; right: var(--safe-right); top: var(--safe-top); bottom: var(--safe-bottom);
     width: 320px;
     z-index: 2000;
     background: var(--ui-bg); color: var(--ui-text); 
@@ -462,10 +462,10 @@
   /* --- ビューポート --- */
   #viewport {
     position: absolute; 
-    top: var(--safe-top-init); 
-    left: calc(80px + var(--safe-left-init)); 
-    right: calc(320px + var(--safe-right-init));
-    height: calc(var(--initial-vh) - var(--safe-top-init) - var(--safe-bottom-init));
+    top: var(--safe-top); 
+    left: calc(80px + var(--safe-left)); 
+    right: calc(320px + var(--safe-right));
+    height: calc(var(--initial-vh) - var(--safe-top) - var(--safe-bottom));
     overflow: hidden; 
     background: #f0f0f0; 
     cursor: default;
@@ -1693,15 +1693,6 @@ body.preview-mode .article-group { background-color: transparent; }
   const overflowStatusText = document.getElementById('overflow-status-text');
   const svgFiltersContainer = document.getElementById('svg-filters-container');
   function setInitialViewportVars() {
-    const computed = getComputedStyle(root);
-    const safeTop = computed.getPropertyValue('--safe-top') || '0px';
-    const safeBottom = computed.getPropertyValue('--safe-bottom') || '0px';
-    const safeLeft = computed.getPropertyValue('--safe-left') || '0px';
-    const safeRight = computed.getPropertyValue('--safe-right') || '0px';
-    root.style.setProperty('--safe-top-init', safeTop);
-    root.style.setProperty('--safe-bottom-init', safeBottom);
-    root.style.setProperty('--safe-left-init', safeLeft);
-    root.style.setProperty('--safe-right-init', safeRight);
     root.style.setProperty('--initial-vh', `${window.innerHeight}px`);
   }
   setInitialViewportVars();
@@ -3277,25 +3268,27 @@ function updateFreeTextAttr() {
     if (currentTool === 'hand') viewport.style.cursor = 'grab';
 
     if (!isDragging) { // Click logic
-        const previouslySelectedId = selectedId;
-        const targetGroup = e.target.closest('.article-group');
-        const targetId = targetGroup ? targetGroup.dataset.id : null;
-        const isUiElement = e.target.closest('.settings-panel') || e.target.closest('.toolbar-container') || e.target.closest('.menu-panel');
+        if (e.button === 0) { // Only trigger click logic on left-click
+            const previouslySelectedId = selectedId;
+            const targetGroup = e.target.closest('.article-group');
+            const targetId = targetGroup ? targetGroup.dataset.id : null;
+            const isUiElement = e.target.closest('.settings-panel') || e.target.closest('.toolbar-container') || e.target.closest('.menu-panel');
 
-        if (e.target.closest('.resize-handle') || e.target.closest('.port')) {
-            // Handle/port clicks are managed by other logic, do nothing here.
-        } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode') && !pointerMovedSinceDown && !selectionMovedSinceDown) {
-            const g = groups.find(item => item.id === targetId);
-            if (g) {
-                // All editable types now use the overlay editor
-                if (['free-text', 'headline', 'header', 'article', 'image'].includes(g.type)) {
-                    openOverlayEditor(g);
+            if (e.target.closest('.resize-handle') || e.target.closest('.port')) {
+                // Handle/port clicks are managed by other logic, do nothing here.
+            } else if (targetId && targetId === previouslySelectedId && !document.body.classList.contains('preview-mode') && !pointerMovedSinceDown && !selectionMovedSinceDown) {
+                const g = groups.find(item => item.id === targetId);
+                if (g) {
+                    // All editable types now use the overlay editor
+                    if (['free-text', 'headline', 'header', 'article', 'image'].includes(g.type)) {
+                        openOverlayEditor(g);
+                    }
                 }
+            } else if (targetGroup) {
+                selectObject(targetId);
+            } else if (!isUiElement) {
+                deselectAll();
             }
-        } else if (targetGroup) {
-            selectObject(targetId);
-        } else if (!isUiElement) {
-            deselectAll();
         }
     } else { // Drag-end logic
         if (opMode === 'link') {
