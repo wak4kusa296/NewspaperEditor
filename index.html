@@ -23,6 +23,10 @@
     /* === 基本設定 === */
     --base-font-size: 24px; 
     --line-gap: 12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
     
     /* 用紙サイズ (JSで制御) */
     --paper-w: 297mm;
@@ -74,8 +78,8 @@
 
   /* --- 左サイドバー (ツールバー) --- */
   .toolbar-container {
-    position: fixed; top: 0; left: 0; 
-    width: 80px; height: 100vh; 
+    position: fixed; top: var(--safe-top); bottom: var(--safe-bottom);
+    left: var(--safe-left); width: 80px; 
     z-index: 2000;
     background: var(--ui-bg);
     border-right: 1px solid var(--ui-border);
@@ -177,8 +181,8 @@
   
   /* --- 右サイドバー (設定パネル) --- */
   .settings-panel {
-    position: fixed; right: 0; top: 0; 
-    width: 320px; height: 100vh;
+    position: fixed; right: var(--safe-right); top: var(--safe-top); bottom: var(--safe-bottom);
+    width: 320px;
     z-index: 2000;
     background: var(--ui-bg); color: var(--ui-text); 
     border-left: 1px solid var(--ui-border);
@@ -406,10 +410,10 @@
   /* --- ビューポート --- */
   #viewport {
     position: absolute; 
-    top: 0; 
-    left: 80px; 
-    width: calc(100% - 400px); 
-    height: 100%;
+    top: var(--safe-top); 
+    left: calc(80px + var(--safe-left)); 
+    right: calc(320px + var(--safe-right));
+    bottom: var(--safe-bottom);
     overflow: hidden; 
     background: #f0f0f0; 
     cursor: default;
