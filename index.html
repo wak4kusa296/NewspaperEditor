@@ -1680,12 +1680,22 @@ body.preview-mode .article-group { background-color: transparent; }
   const root = document.documentElement;
   const overflowStatusText = document.getElementById('overflow-status-text');
   const svgFiltersContainer = document.getElementById('svg-filters-container');
-  function refreshAppHeight() {
-      root.style.setProperty('--app-height', `${window.innerHeight}px`);
+  function updateAppHeight() {
+    const viewport = window.visualViewport;
+    const height = viewport ? viewport.height : window.innerHeight;
+    root.style.setProperty('--app-height', `${height}px`);
   }
-  window.addEventListener('resize', refreshAppHeight);
-  window.addEventListener('orientationchange', refreshAppHeight);
-  refreshAppHeight();
+  function updateAppHeightDeferred() {
+    updateAppHeight();
+    setTimeout(updateAppHeight, 150);
+  }
+  window.addEventListener('resize', updateAppHeightDeferred);
+  window.addEventListener('orientationchange', updateAppHeightDeferred);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateAppHeightDeferred);
+    window.visualViewport.addEventListener('scroll', updateAppHeightDeferred);
+  }
+  updateAppHeightDeferred();
   function clearPortHighlights() { document.querySelectorAll('.port').forEach(p => p.classList.remove('link-mode-compatible','port-hovered')); }
   function highlightCompatiblePorts(sourceId) {
       clearPortHighlights();
