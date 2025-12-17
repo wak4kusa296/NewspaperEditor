@@ -651,9 +651,21 @@ body.preview-mode .article-group { background-color: transparent; }
     position: absolute; top: 0; left: 0;
     white-space: nowrap; line-height: 1.0; transform-origin: 0 0;
     display: flex; align-items: center; justify-content: center;
+    /* Safari rendering optimization */
+    -webkit-font-smoothing: antialiased;
+    -webkit-transform-origin: 0 0;
   }
-  .headline-v { writing-mode: vertical-rl; transform-origin: top right; right: 0; left: auto; }
-  .headline-h { writing-mode: horizontal-tb; transform-origin: top left; }
+  .headline-v {
+    writing-mode: vertical-rl;
+    transform-origin: top right;
+    right: 0; left: auto;
+    -webkit-transform-origin: top right;
+  }
+  .headline-h {
+    writing-mode: horizontal-tb;
+    transform-origin: top left;
+    -webkit-transform-origin: top left;
+  }
   .tcy { text-combine-upright: all; text-decoration: none; pointer-events: none; }
 
   .correction-box { width: 100%; height: 100%; pointer-events: none; }
@@ -740,14 +752,18 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   .header-title-text {
-      z-index: 2; 
+      z-index: 2;
       background: transparent;
       line-height: 1.0;
       white-space: nowrap;
-      position: relative; 
+      position: relative;
       writing-mode: vertical-rl;
       font-weight: 900;
       paint-order: stroke fill;
+      /* Safari rendering optimization */
+      -webkit-font-smoothing: antialiased;
+      transform-origin: top left;
+      -webkit-transform-origin: top left;
   }
 
   /* --- エディタ・モーダル関連 --- */
@@ -2492,11 +2508,20 @@ function updatePaperSize(fromPreset = false) {
       const g = groups.find(i => i.id === selectedId);
       if (!g || g.type !== 'article') return;
       g.freeLayout = document.getElementById('art-free-layout').checked;
-      
+
       if (g.freeLayout && !g.h) {
           g.h = (g.danCount * physicalHDan) + ((g.danCount - 1) * physicalHGap);
       }
+
+      // キャッシュをクリア（レイアウトモードが変わったため）
+      delete g._capacityCache;
+      delete g._capacityCacheKey;
+
+      // テキストを再計算して文字数ステータスを更新
+      reflowText();
       renderGroups();
+      updateOverflowStatus(g);
+
       isDirty = true;
       saveToLocalStorage();
   }
@@ -2875,7 +2900,15 @@ function updateFreeTextAttr() {
   }
 
   // --- Zoom / Pan ---
-  function updateTransform() { canvasTransform.style.transform = `translate(${viewX}px, ${viewY}px) scale(${viewScale})`; }
+  function updateTransform() {
+    canvasTransform.style.transform = `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
+
+    // 縮小時に線が消えないよう、拡大率に応じて線の太さを調整
+    // viewScaleが小さいほど、線を太くする（最低1px保証）
+    const minVisibleWidth = Math.max(1, 1 / viewScale);
+    root.style.setProperty('--border-width', minVisibleWidth + 'px');
+    root.style.setProperty('--divider-width', minVisibleWidth + 'px');
+  }
   function fitView() {
     viewScale = 0.6;
     viewX = (window.innerWidth - 80 - 320 - (config.paperW * PX_PER_MM * viewScale)) / 2 + 80;
@@ -3878,7 +3911,9 @@ function updateFreeTextAttr() {
              
              if (isVertical) { content.style.right = padShort + 'px'; content.style.top = padLong + 'px'; }
              else { content.style.left = padLong + 'px'; content.style.top = padShort + 'px'; }
-             content.style.transform = `${baseTransform} ${tr}`;
+             const finalTransform = `${baseTransform} ${tr}`;
+             content.style.transform = finalTransform;
+             content.style.webkitTransform = finalTransform;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -3962,9 +3997,11 @@ function updateFreeTextAttr() {
 
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
-          titleText.style.transform = isVertical
+          const finalTransform = isVertical
               ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
               : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
+          titleText.style.transform = finalTransform;
+          titleText.style.webkitTransform = finalTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
