@@ -877,7 +877,9 @@ body.preview-mode .article-group { background-color: transparent; }
   
   #measure-box {
     position: absolute; top: -9999px; left: -9999px; visibility: hidden;
-    writing-mode: vertical-rl; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; text-indent: 0; 
+    writing-mode: vertical-rl; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; text-indent: 0;
+    min-width: 10px; min-height: 10px; box-sizing: border-box;
+    padding: 0; margin: 0; border: none;
   }
   #headline-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
 
@@ -1628,6 +1630,7 @@ body.preview-mode .article-group { background-color: transparent; }
   let isDirty = false; // 変更検知
   let pointerMovedSinceDown = false;
   let selectionMovedSinceDown = false;
+  let previousToolOnMiddle = null;
 
   // ビュー状態（ズーム・パン）を保存／復元するための管理フラグ
   let hasRestoredCanvasView = false;
@@ -2084,6 +2087,7 @@ body.preview-mode .article-group { background-color: transparent; }
       gridLayer.style.opacity = 0;
       await document.fonts.ready;
       renderGroups();
+      requestAnimationFrame(() => renderGroups());
       
       const paperElement = document.querySelector('.paper');
       
@@ -2969,7 +2973,10 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1) { // Middle mouse button is always for panning
+    if (e.button === 1) { // Middle mouse button always behaves as hand tool
+        if (currentTool !== 'hand') previousToolOnMiddle = currentTool;
+        else previousToolOnMiddle = null;
+        setTool('hand');
         opMode = 'pan'; startViewX = viewX; startViewY = viewY;
         viewport.style.cursor = 'grabbing';
         return;
@@ -3247,6 +3254,10 @@ function updateFreeTextAttr() {
     }
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (!isMouseDown) return; isMouseDown = false; activePointerId = null;
+    if (e.button === 1 && previousToolOnMiddle) {
+        setTool(previousToolOnMiddle);
+        previousToolOnMiddle = null;
+    }
     viewport.style.cursor = (['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) ? 'crosshair' : 'default';
     if (currentTool === 'hand') viewport.style.cursor = 'grab';
 
