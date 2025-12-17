@@ -2979,14 +2979,14 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1) { // Middle mouse button always behaves as hand tool
+    if (e.button === 1) { // Middle mouse button
         e.preventDefault();
-        if (currentTool !== 'hand') previousToolOnMiddle = currentTool;
-        else previousToolOnMiddle = null;
-        setTool('hand');
-        opMode = 'pan'; startViewX = viewX; startViewY = viewY;
+        opMode = 'pan'; // Set opMode directly to 'pan' without changing the tool
+        startViewX = viewX; 
+        startViewY = viewY;
         viewport.style.cursor = 'grabbing';
-        return;
+        isMouseDown = true; // Explicitly set mouse down state
+        return; // Prevent other pointerdown logic
     }
 
     if (currentTool === 'hand') {
@@ -3092,6 +3092,15 @@ function updateFreeTextAttr() {
         }
         return;
     }
+    
+    // Middle-mouse pan logic
+    if (opMode === 'pan' && isMouseDown) {
+        viewX = startViewX + e.clientX - startX;
+        viewY = startViewY + e.clientY - startY;
+        updateTransform();
+        return;
+    }
+
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (activePointerId !== null && e.pointerId === undefined) return;
     if (!isMouseDown) return;
@@ -3261,10 +3270,7 @@ function updateFreeTextAttr() {
     }
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (!isMouseDown) return; isMouseDown = false; activePointerId = null;
-    if (e.button === 1 && previousToolOnMiddle) {
-        setTool(previousToolOnMiddle);
-        previousToolOnMiddle = null;
-    }
+    
     viewport.style.cursor = (['box','headline','correction','vline','image','header','free-text'].includes(currentTool)) ? 'crosshair' : 'default';
     if (currentTool === 'hand') viewport.style.cursor = 'grab';
 
