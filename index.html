@@ -27,6 +27,9 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+    --initial-safe-top: var(--safe-top);
+    --initial-safe-bottom: var(--safe-bottom);
+    --initial-vh: 100vh;
     
     /* 用紙サイズ (JSで制御) */
     --paper-w: 297mm;
@@ -454,10 +457,10 @@
   /* --- ビューポート --- */
   #viewport {
     position: absolute; 
-    top: var(--safe-top); 
+    top: var(--initial-safe-top); 
     left: calc(80px + var(--safe-left)); 
     right: calc(320px + var(--safe-right));
-    bottom: var(--safe-bottom);
+    height: calc(var(--initial-vh) - var(--initial-safe-top) - var(--initial-safe-bottom));
     overflow: hidden; 
     background: #f0f0f0; 
     cursor: default;
@@ -1679,6 +1682,18 @@ body.preview-mode .article-group { background-color: transparent; }
   const root = document.documentElement;
   const overflowStatusText = document.getElementById('overflow-status-text');
   const svgFiltersContainer = document.getElementById('svg-filters-container');
+  function setInitialViewportVars() {
+    const computed = getComputedStyle(root);
+    const safeTop = computed.getPropertyValue('--safe-top') || '0px';
+    const safeBottom = computed.getPropertyValue('--safe-bottom') || '0px';
+    root.style.setProperty('--initial-safe-top', safeTop);
+    root.style.setProperty('--initial-safe-bottom', safeBottom);
+    root.style.setProperty('--initial-vh', `${window.innerHeight}px`);
+  }
+  setInitialViewportVars();
+  window.addEventListener('orientationchange', () => {
+    setTimeout(setInitialViewportVars, 300);
+  });
   function clearPortHighlights() { document.querySelectorAll('.port').forEach(p => p.classList.remove('link-mode-compatible','port-hovered')); }
   function highlightCompatiblePorts(sourceId) {
       clearPortHighlights();
