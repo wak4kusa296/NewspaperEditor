@@ -1043,16 +1043,6 @@ body.preview-mode .article-group { background-color: transparent; }
     <div class="ui-row"><label>左</label><input type="number" id="margin-left" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
     <div class="ui-row"><label>右</label><input type="number" id="margin-right" value="20" onchange="updateMargins()"><span style="font-size:11px;">mm</span></div>
 
-    <div class="ui-header">作成モード</div>
-    <div class="ui-row">
-      <label style="width:auto; flex:1; cursor:pointer; font-size:12px;">
-        <input type="radio" name="c-mode" value="normal" checked onchange="setCreationMode('normal')"> 段揃え
-      </label>
-      <label style="width:auto; flex:1; cursor:pointer; font-size:12px;">
-        <input type="radio" name="c-mode" value="free" onchange="setCreationMode('free')"> 自由
-      </label>
-    </div>
-
     <div class="ui-header">外周情報</div>
     <div class="btn-group-row">
         <button class="btn-group-item active" id="btn-marg-left" onclick="selectMarginaliaTarget('left')">左</button>
@@ -2106,10 +2096,6 @@ body.preview-mode .article-group { background-color: transparent; }
     if(target) target.classList.add('active');
   }
   
-  function setCreationMode(mode) {
-      isFreeCreationMode = (mode === 'free');
-  }
-
   function swapPaperWH() {
       const wInput = document.getElementById('paper-w-mm');
       const hInput = document.getElementById('paper-h-mm');
