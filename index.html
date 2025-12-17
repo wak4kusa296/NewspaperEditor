@@ -881,7 +881,7 @@ body.preview-mode .article-group { background-color: transparent; }
     min-width: 10px; min-height: 10px; box-sizing: border-box;
     padding: 0; margin: 0; border: none;
   }
-  #headline-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
+  #text-measure-box, #header-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
 
 </style>
   
@@ -1478,7 +1478,8 @@ body.preview-mode .article-group { background-color: transparent; }
   </div>
 </div>
 <div id="measure-box"></div>
-<div id="headline-measure-box"></div>
+<div id="text-measure-box"></div>
+<div id="header-measure-box"></div>
 
 <script>
   // --- スライダーと数値入力の連動ヘルパー ---
@@ -1686,7 +1687,8 @@ body.preview-mode .article-group { background-color: transparent; }
   const linkLayer = document.getElementById('link-layer');
   const tempLinkLine = document.getElementById('temp-link-line');
   const measureBox = document.getElementById('measure-box');
-  const hlMeasureBox = document.getElementById('headline-measure-box');
+  const hlMeasureBox = document.getElementById('text-measure-box');
+  const headerMeasureBox = document.getElementById('header-measure-box');
   const root = document.documentElement;
   const overflowStatusText = document.getElementById('overflow-status-text');
   const svgFiltersContainer = document.getElementById('svg-filters-container');
@@ -2902,6 +2904,10 @@ function updateFreeTextAttr() {
     updateTransform();
   }, { passive: false });
 
+  viewport.addEventListener('contextmenu', e => {
+    if (e.button === 1) e.preventDefault();
+  });
+
   function screenToHanmen(sx, sy) {
     const rect = hanmen.getBoundingClientRect();
     return { x: (sx - rect.left) / viewScale, y: (sy - rect.top) / viewScale };
@@ -2973,7 +2979,7 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1 || e.which === 2) { // Middle mouse button always behaves as hand tool
+    if (e.button === 1) { // Middle mouse button always behaves as hand tool
         e.preventDefault();
         if (currentTool !== 'hand') previousToolOnMiddle = currentTool;
         else previousToolOnMiddle = null;
@@ -3255,7 +3261,7 @@ function updateFreeTextAttr() {
     }
     if (activePointerId !== null && e.pointerId !== undefined && activePointerId !== e.pointerId) return;
     if (!isMouseDown) return; isMouseDown = false; activePointerId = null;
-    if ((e.button === 1 || e.which === 2) && previousToolOnMiddle) {
+    if (e.button === 1 && previousToolOnMiddle) {
         setTool(previousToolOnMiddle);
         previousToolOnMiddle = null;
     }
@@ -3810,13 +3816,13 @@ function updateFreeTextAttr() {
           const fontSize = shortSide;
           titleText.style.fontSize = fontSize + 'px';
 
-          hlMeasureBox.innerText = g.text;
-          hlMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
-          hlMeasureBox.style.fontWeight = g.fontWeight || 900;
-          hlMeasureBox.style.fontSize = fontSize + 'px';
-          hlMeasureBox.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+          headerMeasureBox.innerText = g.text;
+          headerMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
+          headerMeasureBox.style.fontWeight = g.fontWeight || 900;
+          headerMeasureBox.style.fontSize = fontSize + 'px';
+          headerMeasureBox.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
 
-          const measuredLong = isVertical ? hlMeasureBox.offsetHeight : hlMeasureBox.offsetWidth;
+          const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
           const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
 
           const translateX = g.titleNudgeX || 0;
