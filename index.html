@@ -2905,7 +2905,7 @@ function updateFreeTextAttr() {
   }, { passive: false });
 
   viewport.addEventListener('contextmenu', e => {
-    if (e.button === 1 || e.button === 2) e.preventDefault();
+    if (e.button === 1 || (e.button === 2 && e.pointerType === 'mouse')) e.preventDefault();
   });
 
   function screenToHanmen(sx, sy) {
@@ -2979,7 +2979,7 @@ function updateFreeTextAttr() {
     startX = e.clientX; startY = e.clientY;
     const hPos = screenToHanmen(e.clientX, e.clientY);
 
-    if (e.button === 1 || e.button === 2) { // Middle or Right mouse button
+    if (e.button === 1 || (e.button === 2 && e.pointerType === 'mouse')) { // Middle or Right mouse button
         e.preventDefault();
         opMode = 'pan';
         startX = e.clientX;
