@@ -3987,151 +3987,197 @@ function updateFreeTextAttr() {
       // コンテンツ描画分岐
       if (g.type === 'headline') {
           const isVertical = (totalH > g.w);
-          const wrapper = document.createElement('div'); wrapper.className = 'headline-wrapper';
           const isInverted = (g.isInverted !== false);
-          wrapper.style.backgroundColor = isInverted ? config.textColor : config.paperColor;
-          wrapper.style.boxShadow = `calc(var(--line-gap)*-1) 0 0 0 ${config.paperColor}, var(--line-gap) 0 0 0 ${config.paperColor}`;
-          wrapper.style.transform = tr;
-          wrapper.style.webkitTransform = tr;
-          
-          const content = document.createElement('div');
-          content.className = 'headline-inner ' + (isVertical ? 'headline-v' : 'headline-h');
-          let htmlText = g.text.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>').replace(/\{\{(.*?)\}\}/g, '<span class="tcy">$1</span>');
-          content.innerHTML = htmlText;
-          content.style.fontFamily = g.fontFamily; content.style.fontWeight = g.fontWeight;
-          content.style.color = isInverted ? config.paperColor : config.textColor;
-          content.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
-
           const padLong = g.padLong || 0; const padShort = g.padShort || 0;
           const availW = g.w - (isVertical ? (padShort * 2) : (padLong * 2));
           const availH = totalH - (isVertical ? (padLong * 2) : (padShort * 2));
 
+          // SVGで描画（ビューポートとレンダリングで完全一致）
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', g.w);
+          svg.setAttribute('height', totalH);
+          svg.style.position = 'absolute';
+          svg.style.left = '0';
+          svg.style.top = '0';
+          svg.style.pointerEvents = 'none';
+          svg.style.transform = tr;
+
+          // 背景
+          const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bgRect.setAttribute('width', g.w);
+          bgRect.setAttribute('height', totalH);
+          bgRect.setAttribute('fill', isInverted ? config.textColor : config.paperColor);
+          svg.appendChild(bgRect);
+
+          // 左右の余白背景（紙の色で塗りつぶし）
+          const leftRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          leftRect.setAttribute('x', -config.lineGap);
+          leftRect.setAttribute('y', 0);
+          leftRect.setAttribute('width', config.lineGap);
+          leftRect.setAttribute('height', totalH);
+          leftRect.setAttribute('fill', config.paperColor);
+          svg.appendChild(leftRect);
+
+          const rightRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rightRect.setAttribute('x', g.w);
+          rightRect.setAttribute('y', 0);
+          rightRect.setAttribute('width', config.lineGap);
+          rightRect.setAttribute('height', totalH);
+          rightRect.setAttribute('fill', config.paperColor);
+          svg.appendChild(rightRect);
+
           if (availW > 0 && availH > 0) {
              const shortSide = isVertical ? availW : availH;
              const longSide = isVertical ? availH : availW;
-             content.style.fontSize = shortSide + 'px';
 
+             // 測定
+             let htmlText = g.text.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>').replace(/\{\{(.*?)\}\}/g, '<span class="tcy">$1</span>');
              hlMeasureBox.innerHTML = htmlText;
-             hlMeasureBox.style.fontFamily = g.fontFamily; hlMeasureBox.style.fontWeight = g.fontWeight;
+             hlMeasureBox.style.fontFamily = g.fontFamily;
+             hlMeasureBox.style.fontWeight = g.fontWeight;
              hlMeasureBox.style.fontSize = shortSide + 'px';
-
-             // Safari rendering bug workaround: Force reflow on the measurement element itself
              window.getComputedStyle(hlMeasureBox).fontSize;
-
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
-             // スケール値を小数点4桁に丸めてレンダリングの一貫性を向上
-             scaleFactor = Math.round(scaleFactor * 10000) / 10000;
 
-             let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
+             // foreignObjectでHTMLを埋め込み
+             const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+             fo.setAttribute('x', 0);
+             fo.setAttribute('y', 0);
+             fo.setAttribute('width', g.w);
+             fo.setAttribute('height', totalH);
 
-             // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
-             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+             const contentDiv = document.createElement('div');
+             contentDiv.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+             contentDiv.style.width = '100%';
+             contentDiv.style.height = '100%';
+             contentDiv.style.position = 'relative';
 
-             // 位置とサイズを整数値に丸めてサブピクセルずれを防止
-             const roundedPadShort = Math.round(padShort);
-             const roundedPadLong = Math.round(padLong);
+             const textSpan = document.createElement('span');
+             textSpan.innerHTML = htmlText;
+             textSpan.style.fontFamily = g.fontFamily;
+             textSpan.style.fontWeight = g.fontWeight;
+             textSpan.style.fontSize = shortSide + 'px';
+             textSpan.style.color = isInverted ? config.paperColor : config.textColor;
+             textSpan.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+             textSpan.style.whiteSpace = 'nowrap';
+             textSpan.style.lineHeight = isVertical ? '1.0' : '0.9';
+             textSpan.style.position = 'absolute';
+             textSpan.style.display = 'flex';
+             textSpan.style.alignItems = 'center';
+             textSpan.style.justifyContent = 'center';
 
              if (isVertical) {
-                 content.style.right = roundedPadShort + 'px';
-                 content.style.top = roundedPadLong + 'px';
-                 content.style.left = 'auto';
+                 textSpan.style.right = padShort + 'px';
+                 textSpan.style.top = padLong + 'px';
+                 textSpan.style.transformOrigin = 'top right';
+                 textSpan.style.transform = `scale(1, ${scaleFactor})`;
              } else {
-                 content.style.left = roundedPadLong + 'px';
-                 content.style.top = roundedPadShort + 'px';
-                 content.style.right = 'auto';
+                 textSpan.style.left = padLong + 'px';
+                 textSpan.style.top = padShort + 'px';
+                 textSpan.style.transformOrigin = 'top left';
+                 textSpan.style.transform = `scale(${scaleFactor}, 1)`;
              }
 
-             // Safari対応: transformOriginとtransformBoxを明示的に設定
-             if (isSafari) {
-                 content.style.backfaceVisibility = 'hidden';
-                 content.style.webkitBackfaceVisibility = 'hidden';
-                 content.style.transformOrigin = isVertical ? 'top right' : 'top left';
-                 content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
-                 content.style.transformBox = 'border-box';
-                 content.style.willChange = 'transform';
-                 // Safari特有のピクセルずれ補正
-                 content.style.webkitFontSmoothing = 'subpixel-antialiased';
-             }
+             contentDiv.appendChild(textSpan);
+             fo.appendChild(contentDiv);
+             svg.appendChild(fo);
+          }
 
-             content.style.transform = baseTransform;
-             content.style.webkitTransform = baseTransform;
-          } else { content.style.display = 'none'; }
-          wrapper.appendChild(content); el.appendChild(wrapper);
+          el.appendChild(svg);
 
       } else if (g.type === 'header') {
-          const box = document.createElement('div'); box.className = 'header-container';
-          box.style.transform = tr;
-
-          const titleBoxOuter = document.createElement('div'); titleBoxOuter.className = 'header-title-box-outer';
-          titleBoxOuter.style.borderWidth = (g.borderOut !== undefined ? g.borderOut : 4) + 'px';
-          titleBoxOuter.style.borderColor = config.textColor;
-          titleBoxOuter.style.backgroundColor = config.paperColor;
-
-          const titleBoxInner = document.createElement('div'); titleBoxInner.className = 'header-title-box-inner';
-          titleBoxInner.style.borderWidth = (g.borderIn !== undefined ? g.borderIn : 1) + 'px';
-          titleBoxInner.style.borderColor = config.textColor;
-          titleBoxInner.style.color = config.textColor; // パターン用に色を継承
-          titleBoxInner.style.padding = `${g.titlePadV || 10}px ${g.titlePadH || 5}px`;
-
-          // 地紋パターン
-          if (true) {
-              const bgSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-              bgSvg.setAttribute("class", "header-bg-pattern");
-              const patId = `pat-lines-${g.id}`;
-              bgSvg.innerHTML = `
-                <defs>
-                  <pattern id="${patId}" x="0" y="0" width="10" height="4" patternUnits="userSpaceOnUse">
-                    <line x1="0" y1="2" x2="10" y2="2" stroke="${config.textColor}" stroke-width="0.5" stroke-linecap="round" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#${patId})" />
-              `;
-              titleBoxInner.appendChild(bgSvg);
-          }
-
-          const titleText = document.createElement('div'); titleText.className = 'header-title-text';
-          titleText.innerText = g.text;
-          titleText.style.fontFamily = g.fontFamily || config.fontFamily;
-          titleText.style.fontWeight = g.fontWeight || 900;
-          
-          // 色設定 (反転ロジック)
-          const isTitleInverted = g.isTitleInverted === true;
-          const strokeW = g.titleStrokeWidth || 0;
-
-          titleText.style.color = isTitleInverted ? config.paperColor : config.textColor;
-          if (strokeW > 0) {
-              titleText.style.webkitTextStrokeWidth = strokeW + 'px';
-              titleText.style.webkitTextStrokeColor = isTitleInverted ? config.textColor : config.paperColor;
-              // フチ文字の設定 (フチの上に文字を描画)
-              titleText.style.paintOrder = "stroke fill"; 
-          }
-          
-          const borderSpace = (g.borderOut || 4) + 4 + (g.borderIn || 1);
+          const borderOut = g.borderOut !== undefined ? g.borderOut : 4;
+          const borderIn = g.borderIn !== undefined ? g.borderIn : 1;
           const padV = g.titlePadV || 10;
           const padH = g.titlePadH || 5;
+          const borderSpace = borderOut + 4 + borderIn;
 
-          const titleTextWrapper = document.createElement('div');
-          titleTextWrapper.className = 'header-title-transform';
-          titleTextWrapper.appendChild(titleText);
-          titleBoxInner.appendChild(titleTextWrapper);
-          titleBoxOuter.appendChild(titleBoxInner);
-          box.appendChild(titleBoxOuter);
+          // SVGで描画（ビューポートとレンダリングで完全一致）
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', g.w);
+          svg.setAttribute('height', totalH);
+          svg.style.position = 'absolute';
+          svg.style.left = '0';
+          svg.style.top = '0';
+          svg.style.pointerEvents = 'none';
+          svg.style.transform = tr;
 
-          el.appendChild(box);
+          // 背景と左右余白
+          const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          bgRect.setAttribute('x', -config.lineGap);
+          bgRect.setAttribute('y', 0);
+          bgRect.setAttribute('width', g.w + config.lineGap * 2);
+          bgRect.setAttribute('height', totalH);
+          bgRect.setAttribute('fill', config.paperColor);
+          svg.appendChild(bgRect);
 
-          // 利用可能な幅と高さを計算（border + padding分を引く）
+          // foreignObjectで題字の構造を埋め込み
+          const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+          fo.setAttribute('x', 0);
+          fo.setAttribute('y', 0);
+          fo.setAttribute('width', g.w);
+          fo.setAttribute('height', totalH);
+
+          const containerDiv = document.createElement('div');
+          containerDiv.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+          containerDiv.style.width = '100%';
+          containerDiv.style.height = '100%';
+          containerDiv.style.display = 'flex';
+          containerDiv.style.flexDirection = 'column';
+
+          // 外枠
+          const outerBox = document.createElement('div');
+          outerBox.style.flex = '1';
+          outerBox.style.border = `${borderOut}px solid ${config.textColor}`;
+          outerBox.style.padding = '4px';
+          outerBox.style.boxSizing = 'border-box';
+          outerBox.style.display = 'flex';
+          outerBox.style.backgroundColor = config.paperColor;
+          outerBox.style.overflow = 'hidden';
+          outerBox.style.borderRadius = '2px';
+
+          // 内枠
+          const innerBox = document.createElement('div');
+          innerBox.style.flex = '1';
+          innerBox.style.border = `${borderIn}px solid ${config.textColor}`;
+          innerBox.style.position = 'relative';
+          innerBox.style.overflow = 'hidden';
+          innerBox.style.display = 'flex';
+          innerBox.style.alignItems = 'center';
+          innerBox.style.justifyContent = 'center';
+          innerBox.style.padding = `${padV}px ${padH}px`;
+          innerBox.style.borderRadius = '1px';
+
+          // 地紋パターン
+          const patternSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          patternSvg.style.position = 'absolute';
+          patternSvg.style.top = '0';
+          patternSvg.style.left = '0';
+          patternSvg.style.width = '100%';
+          patternSvg.style.height = '100%';
+          patternSvg.style.zIndex = '0';
+          patternSvg.style.pointerEvents = 'none';
+          const patId = `pat-lines-${g.id}`;
+          patternSvg.innerHTML = `
+            <defs>
+              <pattern id="${patId}" x="0" y="0" width="10" height="4" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="2" x2="10" y2="2" stroke="${config.textColor}" stroke-width="0.5" stroke-linecap="round" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#${patId})" />
+          `;
+          innerBox.appendChild(patternSvg);
+
+          // 利用可能な幅と高さを計算
           const availW = Math.max(10, g.w - (borderSpace * 2) - (padH * 2));
           const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
           const isVertical = availH > availW;
 
-          titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
-          titleText.style.lineHeight = isVertical ? '1.0' : '0.85';
-
+          // 測定
           const shortSide = isVertical ? availW : availH;
           const longSide = isVertical ? availH : availW;
           const baseFontSize = shortSide;
-          titleText.style.fontSize = baseFontSize + 'px';
 
           headerMeasureBox.innerText = g.text;
           headerMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
@@ -4142,34 +4188,42 @@ function updateFreeTextAttr() {
 
           const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
           let scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
-          // スケール値を小数点4桁に丸めてレンダリングの一貫性を向上
-          scale = Math.round(scale * 10000) / 10000;
 
-          // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          // テキスト
+          const isTitleInverted = g.isTitleInverted === true;
+          const strokeW = g.titleStrokeWidth || 0;
+          const translateX = g.titleNudgeX || 0;
+          const translateY = g.titleNudgeY || 0;
 
-          // 位置を整数値に丸めてサブピクセルずれを防止
-          const translateX = Math.round(g.titleNudgeX || 0);
-          const translateY = Math.round(g.titleNudgeY || 0);
+          const textSpan = document.createElement('span');
+          textSpan.innerText = g.text;
+          textSpan.style.fontFamily = g.fontFamily || config.fontFamily;
+          textSpan.style.fontWeight = g.fontWeight || 900;
+          textSpan.style.fontSize = baseFontSize + 'px';
+          textSpan.style.color = isTitleInverted ? config.paperColor : config.textColor;
+          textSpan.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+          textSpan.style.lineHeight = isVertical ? '1.0' : '0.85';
+          textSpan.style.whiteSpace = 'nowrap';
+          textSpan.style.position = 'relative';
+          textSpan.style.zIndex = '2';
+          textSpan.style.background = 'transparent';
 
-          // Safari対応: transformOriginとtransformBoxを明示的に設定
-          if (isSafari) {
-              titleText.style.backfaceVisibility = 'hidden';
-              titleText.style.webkitBackfaceVisibility = 'hidden';
-              titleText.style.transformOrigin = '0 0';
-              titleText.style.webkitTransformOrigin = '0 0';
-              titleText.style.transformBox = 'border-box';
-              titleText.style.willChange = 'transform';
-              // Safari特有のピクセルずれ補正
-              titleText.style.webkitFontSmoothing = 'subpixel-antialiased';
+          if (strokeW > 0) {
+              textSpan.style.webkitTextStrokeWidth = strokeW + 'px';
+              textSpan.style.webkitTextStrokeColor = isTitleInverted ? config.textColor : config.paperColor;
+              textSpan.style.paintOrder = 'stroke fill';
           }
 
-          const scaleTransform = isVertical
-              ? `scale(1, ${scale})`
-              : `scale(${scale}, 1)`;
-          const combinedTransform = `translate(${translateX}px, ${translateY}px) ${scaleTransform}`;
-          titleText.style.transform = combinedTransform;
-          titleText.style.webkitTransform = combinedTransform;
+          const scaleTransform = isVertical ? `scale(1, ${scale})` : `scale(${scale}, 1)`;
+          textSpan.style.transform = `translate(${translateX}px, ${translateY}px) ${scaleTransform}`;
+          textSpan.style.transformOrigin = '0 0';
+
+          innerBox.appendChild(textSpan);
+          outerBox.appendChild(innerBox);
+          containerDiv.appendChild(outerBox);
+          fo.appendChild(containerDiv);
+          svg.appendChild(fo);
+          el.appendChild(svg);
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
