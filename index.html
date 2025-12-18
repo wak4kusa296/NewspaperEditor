@@ -3990,6 +3990,7 @@ function updateFreeTextAttr() {
           content.innerHTML = htmlText;
           content.style.fontFamily = g.fontFamily; content.style.fontWeight = g.fontWeight;
           content.style.color = isInverted ? config.paperColor : config.textColor;
+          content.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
 
           const padLong = g.padLong || 0; const padShort = g.padShort || 0;
           const availW = g.w - (isVertical ? (padShort * 2) : (padLong * 2));
@@ -4013,16 +4014,14 @@ function updateFreeTextAttr() {
              
              // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-             const nudgeX = g.nudgeX || 0;
-             const nudgeY = g.nudgeY || 0;
 
              if (isVertical) {
-                 content.style.right = (padShort - nudgeX) + 'px';
-                 content.style.top = (padLong + nudgeY) + 'px';
+                 content.style.right = padShort + 'px';
+                 content.style.top = padLong + 'px';
                  content.style.left = 'auto';
              } else {
-                 content.style.left = (padLong + nudgeX) + 'px';
-                 content.style.top = (padShort + nudgeY) + 'px';
+                 content.style.left = padLong + 'px';
+                 content.style.top = padShort + 'px';
                  content.style.right = 'auto';
              }
 
@@ -4034,8 +4033,8 @@ function updateFreeTextAttr() {
                  content.style.webkitBackfaceVisibility = 'hidden';
              }
 
-             content.style.transform = baseTransform;
-             content.style.webkitTransform = baseTransform;
+             content.style.transform = `${baseTransform} ${tr}`;
+             content.style.webkitTransform = `${baseTransform} ${tr}`;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
