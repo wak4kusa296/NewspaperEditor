@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -4031,9 +4031,8 @@ function updateFreeTextAttr() {
                  content.style.right = 'auto';
              }
 
+             // Safari対応: backfaceVisibilityのみ設定（transformOriginはCSSに任せる）
              if (isSafari) {
-                 content.style.transformOrigin = isVertical ? 'top right' : 'top left';
-                 content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
                  content.style.backfaceVisibility = 'hidden';
                  content.style.webkitBackfaceVisibility = 'hidden';
              }
@@ -4108,7 +4107,6 @@ function updateFreeTextAttr() {
           const availW = Math.max(10, g.w - (borderSpace * 2) - (padH * 2));
           const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
           const isVertical = availH > availW;
-          const transformOrigin = 'center center';
 
           titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
           titleText.style.lineHeight = isVertical ? '1.0' : '0.85';
@@ -4134,8 +4132,7 @@ function updateFreeTextAttr() {
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
 
-          titleText.style.transformOrigin = transformOrigin;
-          titleText.style.webkitTransformOrigin = transformOrigin;
+          // Safari対応: backfaceVisibilityのみ設定（transformOriginはCSSデフォルトに任せる）
           if (isSafari) {
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
