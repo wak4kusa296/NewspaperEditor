@@ -3893,8 +3893,17 @@ function updateFreeTextAttr() {
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
              
-             if (isVertical) { content.style.right = padShort + 'px'; content.style.top = padLong + 'px'; }
-             else { content.style.left = padLong + 'px'; content.style.top = padShort + 'px'; }
+             // Safari補正: サブピクセルレンダリングのずれを防ぐため整数化
+             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+             const safariOffset = isSafari ? 0.5 : 0; // Safariで0.5pxオフセット補正
+
+             if (isVertical) {
+                 content.style.right = Math.round(padShort - safariOffset) + 'px';
+                 content.style.top = Math.round(padLong - safariOffset) + 'px';
+             } else {
+                 content.style.left = Math.round(padLong - safariOffset) + 'px';
+                 content.style.top = Math.round(padShort - safariOffset) + 'px';
+             }
              content.style.transform = `${baseTransform} ${tr}`;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
@@ -3977,8 +3986,12 @@ function updateFreeTextAttr() {
           const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
           const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
 
-          const translateX = g.titleNudgeX || 0;
-          const translateY = g.titleNudgeY || 0;
+          // Safari補正: サブピクセルレンダリングのずれを防ぐ
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          const safariOffset = isSafari ? 0.5 : 0;
+
+          const translateX = (g.titleNudgeX || 0) - safariOffset;
+          const translateY = (g.titleNudgeY || 0) - safariOffset;
           titleText.style.transform = isVertical
               ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
               : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
