@@ -4030,12 +4030,14 @@ function updateFreeTextAttr() {
              const shortSide = isVertical ? availW : availH;
              const longSide = isVertical ? availH : availW;
 
-             // 測定
+             // 測定（常に横書きで測定）
              let htmlText = g.text.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>').replace(/\{\{(.*?)\}\}/g, '<span class="tcy">$1</span>');
              hlMeasureBox.innerHTML = htmlText;
              hlMeasureBox.style.fontFamily = g.fontFamily;
              hlMeasureBox.style.fontWeight = g.fontWeight;
              hlMeasureBox.style.fontSize = shortSide + 'px';
+             hlMeasureBox.style.writingMode = 'horizontal-tb';
+             hlMeasureBox.style.lineHeight = isVertical ? '1.0' : '0.9';
              window.getComputedStyle(hlMeasureBox).fontSize;
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
@@ -4054,12 +4056,11 @@ function updateFreeTextAttr() {
              contentDiv.style.position = 'relative';
 
              const textSpan = document.createElement('span');
-             textSpan.innerHTML = htmlText;
              textSpan.style.fontFamily = g.fontFamily;
              textSpan.style.fontWeight = g.fontWeight;
              textSpan.style.fontSize = shortSide + 'px';
              textSpan.style.color = isInverted ? config.paperColor : config.textColor;
-             textSpan.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+             textSpan.style.writingMode = 'horizontal-tb';
              textSpan.style.whiteSpace = 'nowrap';
              textSpan.style.lineHeight = isVertical ? '1.0' : '0.9';
              textSpan.style.position = 'absolute';
@@ -4069,35 +4070,80 @@ function updateFreeTextAttr() {
 
              // 完全中央揃え：パディングを考慮した利用可能領域の中心にテキストの中心を配置
              if (isVertical) {
-                 // 縦書き：利用可能領域の中心座標を計算（パディング考慮）
+                 // 縦書き：一文字ずつ配置（縦中横対応）
+                 textSpan.style.display = 'inline-block';
+                 textSpan.style.textAlign = 'center';
+
                  const availAreaCenterX = padShort + availW / 2;
                  const availAreaCenterY = padLong + availH / 2;
 
-                 // テキストの中心座標（スケール適用前のサイズで計算）
                  const textCenterX = shortSide / 2;
                  const textCenterY = actualLen / 2;
-
-                 // スケール適用後のテキスト中心座標
                  const scaledTextCenterY = textCenterY * scaleFactor;
 
-                 // 利用可能領域の中心からテキスト中心を引いてオフセットを計算
                  const absoluteX = availAreaCenterX - textCenterX;
                  const absoluteY = availAreaCenterY - scaledTextCenterY;
 
                  textSpan.style.transform = `translate(${absoluteX}px, ${absoluteY}px) scale(1, ${scaleFactor})`;
+
+                 // HTMLテキストをパースして一文字ずつ処理
+                 const tempDiv = document.createElement('div');
+                 tempDiv.innerHTML = htmlText;
+                 const processNode = (node) => {
+                     if (node.nodeType === Node.TEXT_NODE) {
+                         const chars = node.textContent.split('');
+                         chars.forEach(char => {
+                             const charSpan = document.createElement('span');
+                             charSpan.innerText = char;
+                             charSpan.style.display = 'block';
+                             charSpan.style.lineHeight = '1.0';
+                             charSpan.style.height = shortSide + 'px';
+                             textSpan.appendChild(charSpan);
+                         });
+                     } else if (node.classList && node.classList.contains('tcy')) {
+                         // 縦中横要素（数字など）
+                         const tcyText = node.textContent;
+
+                         // 測定して収まるサイズを計算
+                         hlMeasureBox.innerText = tcyText;
+                         hlMeasureBox.style.fontSize = shortSide + 'px';
+                         hlMeasureBox.style.writingMode = 'horizontal-tb';
+                         hlMeasureBox.style.lineHeight = '1.0';
+                         window.getComputedStyle(hlMeasureBox).fontSize;
+                         const tcyWidth = hlMeasureBox.offsetWidth;
+                         const tcyFontSize = tcyWidth > 0 ? (shortSide / tcyWidth) * shortSide : shortSide * 0.5;
+
+                         const wrapperSpan = document.createElement('span');
+                         wrapperSpan.style.display = 'block';
+                         wrapperSpan.style.height = shortSide + 'px';
+                         wrapperSpan.style.lineHeight = shortSide + 'px';
+                         wrapperSpan.style.textAlign = 'center';
+
+                         const chars = tcyText.split('');
+                         chars.forEach(char => {
+                             const charSpan = document.createElement('span');
+                             charSpan.innerText = char;
+                             charSpan.style.display = 'inline-block';
+                             charSpan.style.fontSize = tcyFontSize + 'px';
+                             charSpan.style.lineHeight = '1.0';
+                             charSpan.style.verticalAlign = 'middle';
+                             wrapperSpan.appendChild(charSpan);
+                         });
+                         textSpan.appendChild(wrapperSpan);
+                     }
+                 };
+                 Array.from(tempDiv.childNodes).forEach(processNode);
              } else {
-                 // 横書き：利用可能領域の中心座標を計算（パディング考慮）
+                 // 横書き：HTMLをそのまま表示
+                 textSpan.innerHTML = htmlText;
+
                  const availAreaCenterX = padLong + availW / 2;
                  const availAreaCenterY = padShort + availH / 2;
 
-                 // テキストの中心座標（スケール適用前のサイズで計算）
                  const textCenterX = actualLen / 2;
                  const textCenterY = shortSide / 2;
-
-                 // スケール適用後のテキスト中心座標
                  const scaledTextCenterX = textCenterX * scaleFactor;
 
-                 // 利用可能領域の中心からテキスト中心を引いてオフセットを計算
                  const absoluteX = availAreaCenterX - scaledTextCenterX;
                  const absoluteY = availAreaCenterY - textCenterY;
 
@@ -4200,19 +4246,23 @@ function updateFreeTextAttr() {
           const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
           const isVertical = availH > availW;
 
-          // 測定
+          // 測定（常に横書きで測定）
           const shortSide = isVertical ? availW : availH;
           const longSide = isVertical ? availH : availW;
           const baseFontSize = shortSide;
 
-          headerMeasureBox.innerText = g.text;
+          // 数字や{{}}を縦中横として処理
+          let htmlText = g.text.replace(/([0-9]{1,2})/g, '<span class="tcy">$1</span>').replace(/\{\{(.*?)\}\}/g, '<span class="tcy">$1</span>');
+
+          headerMeasureBox.innerHTML = htmlText;
           headerMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
           headerMeasureBox.style.fontWeight = g.fontWeight || 900;
           headerMeasureBox.style.fontSize = baseFontSize + 'px';
-          headerMeasureBox.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+          headerMeasureBox.style.writingMode = 'horizontal-tb';
+          headerMeasureBox.style.lineHeight = '0.85';
           window.getComputedStyle(headerMeasureBox).fontSize;
 
-          const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
+          const measuredLong = headerMeasureBox.offsetWidth;
           let scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
 
           // テキスト
@@ -4222,13 +4272,12 @@ function updateFreeTextAttr() {
           const translateY = g.titleNudgeY || 0;
 
           const textSpan = document.createElement('span');
-          textSpan.innerText = g.text;
           textSpan.style.fontFamily = g.fontFamily || config.fontFamily;
           textSpan.style.fontWeight = g.fontWeight || 900;
           textSpan.style.fontSize = baseFontSize + 'px';
           textSpan.style.color = isTitleInverted ? config.paperColor : config.textColor;
-          textSpan.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
-          textSpan.style.lineHeight = isVertical ? '1.0' : '0.85';
+          textSpan.style.writingMode = 'horizontal-tb';
+          textSpan.style.lineHeight = '0.85';
           textSpan.style.whiteSpace = 'nowrap';
           textSpan.style.position = 'absolute';
           textSpan.style.left = '0';
@@ -4249,35 +4298,81 @@ function updateFreeTextAttr() {
           const innerBoxOffsetY = borderOut + 4 + borderIn + padV;
 
           if (isVertical) {
-              // 縦書き：利用可能領域の中心座標を計算
+              // 縦書き：一文字ずつ配置（縦中横対応）
+              textSpan.style.display = 'inline-block';
+              textSpan.style.textAlign = 'center';
+              textSpan.style.lineHeight = '1.0';
+
               const availAreaCenterX = innerBoxOffsetX + availW / 2;
               const availAreaCenterY = innerBoxOffsetY + availH / 2;
 
-              // テキストの中心座標（スケール適用前）
               const textCenterX = baseFontSize / 2;
               const textCenterY = measuredLong / 2;
-
-              // スケール適用後のテキスト中心座標
               const scaledTextCenterY = textCenterY * scale;
 
-              // 利用可能領域の中心からテキスト中心を引いてオフセットを計算
               const absoluteX = availAreaCenterX - textCenterX + translateX;
               const absoluteY = availAreaCenterY - scaledTextCenterY + translateY;
 
               textSpan.style.transform = `translate(${absoluteX}px, ${absoluteY}px) scale(1, ${scale})`;
+
+              // HTMLテキストをパースして一文字ずつ処理
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = htmlText;
+              const processNode = (node) => {
+                  if (node.nodeType === Node.TEXT_NODE) {
+                      const chars = node.textContent.split('');
+                      chars.forEach(char => {
+                          const charSpan = document.createElement('span');
+                          charSpan.innerText = char;
+                          charSpan.style.display = 'block';
+                          charSpan.style.lineHeight = '1.0';
+                          charSpan.style.height = baseFontSize + 'px';
+                          textSpan.appendChild(charSpan);
+                      });
+                  } else if (node.classList && node.classList.contains('tcy')) {
+                      // 縦中横要素（数字など）
+                      const tcyText = node.textContent;
+
+                      // 測定して収まるサイズを計算
+                      headerMeasureBox.innerText = tcyText;
+                      headerMeasureBox.style.fontSize = baseFontSize + 'px';
+                      headerMeasureBox.style.writingMode = 'horizontal-tb';
+                      headerMeasureBox.style.lineHeight = '1.0';
+                      window.getComputedStyle(headerMeasureBox).fontSize;
+                      const tcyWidth = headerMeasureBox.offsetWidth;
+                      const tcyFontSize = tcyWidth > 0 ? (baseFontSize / tcyWidth) * baseFontSize : baseFontSize * 0.5;
+
+                      const wrapperSpan = document.createElement('span');
+                      wrapperSpan.style.display = 'block';
+                      wrapperSpan.style.height = baseFontSize + 'px';
+                      wrapperSpan.style.lineHeight = baseFontSize + 'px';
+                      wrapperSpan.style.textAlign = 'center';
+
+                      const chars = tcyText.split('');
+                      chars.forEach(char => {
+                          const charSpan = document.createElement('span');
+                          charSpan.innerText = char;
+                          charSpan.style.display = 'inline-block';
+                          charSpan.style.fontSize = tcyFontSize + 'px';
+                          charSpan.style.lineHeight = '1.0';
+                          charSpan.style.verticalAlign = 'middle';
+                          wrapperSpan.appendChild(charSpan);
+                      });
+                      textSpan.appendChild(wrapperSpan);
+                  }
+              };
+              Array.from(tempDiv.childNodes).forEach(processNode);
           } else {
-              // 横書き：利用可能領域の中心座標を計算
+              // 横書き：HTMLをそのまま表示
+              textSpan.innerHTML = htmlText;
+
               const availAreaCenterX = innerBoxOffsetX + availW / 2;
               const availAreaCenterY = innerBoxOffsetY + availH / 2;
 
-              // テキストの中心座標（スケール適用前）
               const textCenterX = measuredLong / 2;
               const textCenterY = baseFontSize / 2;
-
-              // スケール適用後のテキスト中心座標
               const scaledTextCenterX = textCenterX * scale;
 
-              // 利用可能領域の中心からテキスト中心を引いてオフセットを計算
               const absoluteX = availAreaCenterX - scaledTextCenterX + translateX;
               const absoluteY = availAreaCenterY - textCenterY + translateY;
 
