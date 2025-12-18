@@ -1586,6 +1586,35 @@ body.preview-mode .article-group { background-color: transparent; }
       document.getElementById('marg-font').value = '"Noto Sans JP", sans-serif';
   }
 
+  const FONT_FAMILY_BLACKLIST = new Set(['serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-rounded', 'ui-monospace', 'emoji', 'math']);
+
+  function normalizeFontFamily(raw) {
+      if (!raw) return null;
+      const parts = raw.split(',');
+      if (parts.length === 0) return null;
+      const primary = parts[0].trim().replace(/^["']|["']$/g, '');
+      if (!primary) return null;
+      if (FONT_FAMILY_BLACKLIST.has(primary.toLowerCase())) return null;
+      return `"${primary}"`;
+  }
+
+  async function ensureWebFontsLoaded() {
+      if (!document.fonts || !document.fonts.load) return;
+      const familyCandidates = new Set();
+      const addFamily = (value) => {
+          const normalized = normalizeFontFamily(value);
+          if (normalized) familyCandidates.add(normalized);
+      };
+      addFamily(config.fontFamily);
+      fontOptions.forEach(group => group.options.forEach(opt => addFamily(opt.val)));
+      const loadPromises = [];
+      familyCandidates.forEach(family => {
+          loadPromises.push(document.fonts.load(`16px ${family}`));
+      });
+      if (loadPromises.length === 0) return;
+      await Promise.allSettled(loadPromises);
+  }
+
   // --- 設定 ---
   let config = {
     baseFontSize: 24, charsPerDan: 11, charsGap: 1.0, pageDanCount: 8, rowsPerDan: 40,
@@ -2105,6 +2134,7 @@ body.preview-mode .article-group { background-color: transparent; }
       const gridPrevDisplay = gridLayer.style.display;
       gridLayer.style.display = 'none'; // 書き出しは文字マスを必ず非表示
       gridLayer.style.opacity = 0;
+      await ensureWebFontsLoaded();
       await document.fonts.ready;
       renderGroups();
       requestAnimationFrame(() => renderGroups());
