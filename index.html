@@ -4018,19 +4018,25 @@ function updateFreeTextAttr() {
 
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
+             // スケール値を小数点4桁に丸めてレンダリングの一貫性を向上
+             scaleFactor = Math.round(scaleFactor * 10000) / 10000;
 
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
 
              // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
+             // 位置とサイズを整数値に丸めてサブピクセルずれを防止
+             const roundedPadShort = Math.round(padShort);
+             const roundedPadLong = Math.round(padLong);
+
              if (isVertical) {
-                 content.style.right = padShort + 'px';
-                 content.style.top = padLong + 'px';
+                 content.style.right = roundedPadShort + 'px';
+                 content.style.top = roundedPadLong + 'px';
                  content.style.left = 'auto';
              } else {
-                 content.style.left = padLong + 'px';
-                 content.style.top = padShort + 'px';
+                 content.style.left = roundedPadLong + 'px';
+                 content.style.top = roundedPadShort + 'px';
                  content.style.right = 'auto';
              }
 
@@ -4132,13 +4138,16 @@ function updateFreeTextAttr() {
           window.getComputedStyle(headerMeasureBox).fontSize;
 
           const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
-          const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
+          let scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
+          // スケール値を小数点4桁に丸めてレンダリングの一貫性を向上
+          scale = Math.round(scale * 10000) / 10000;
 
           // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-          const translateX = g.titleNudgeX || 0;
-          const translateY = g.titleNudgeY || 0;
+          // 位置を整数値に丸めてサブピクセルずれを防止
+          const translateX = Math.round(g.titleNudgeX || 0);
+          const translateY = Math.round(g.titleNudgeY || 0);
 
           // Safari対応: transformOriginを明示的に設定
           if (isSafari) {
