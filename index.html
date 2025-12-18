@@ -4008,7 +4008,7 @@ function updateFreeTextAttr() {
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
-             
+
              // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
@@ -4020,6 +4020,13 @@ function updateFreeTextAttr() {
                  content.style.left = padLong + 'px';
                  content.style.top = padShort + 'px';
                  content.style.right = 'auto';
+             }
+
+             if (isSafari) {
+                 content.style.transformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.backfaceVisibility = 'hidden';
+                 content.style.webkitBackfaceVisibility = 'hidden';
              }
 
              content.style.transform = `${baseTransform} ${tr}`;
@@ -4091,7 +4098,7 @@ function updateFreeTextAttr() {
           const isVertical = availH > availW;
 
           titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
-          titleText.style.lineHeight = isVertical ? '1.0' : '0.9';
+          titleText.style.lineHeight = isVertical ? '1.0' : '0.85';
 
           const shortSide = isVertical ? availW : availH;
           const longSide = isVertical ? availH : availW;
@@ -4112,6 +4119,13 @@ function updateFreeTextAttr() {
 
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
+
+          if (isSafari) {
+              titleText.style.transformOrigin = 'top left';
+              titleText.style.webkitTransformOrigin = 'top left';
+              titleText.style.backfaceVisibility = 'hidden';
+              titleText.style.webkitBackfaceVisibility = 'hidden';
+          }
 
           const finalTransform = isVertical
               ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
