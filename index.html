@@ -2270,20 +2270,42 @@ async function embedGoogleFonts() {
       document.documentElement.style.overflow = 'visible';
 
       try {
-          // html2canvas実行
+        // html2canvas実行
           const canvas = await html2canvas(paperElement, {
-              scale: 2, // 高解像度
-              useCORS: true,
-              allowTaint: true,
-              logging: true,
-              backgroundColor: null,
-              scrollX: 0, scrollY: 0,
-              x: 0, y: 0,
-              width: paperElement.offsetWidth,
-              height: paperElement.offsetHeight,
-              windowWidth: paperElement.scrollWidth,
-              windowHeight: paperElement.scrollHeight,
-              foreignObjectRendering: true // 縦書き対応のため必須
+            scale: 2, 
+            useCORS: true,
+            allowTaint: true,
+            logging: true,
+            backgroundColor: null,
+            scrollX: 0, scrollY: 0,
+            x: 0, y: 0,
+            width: paperElement.offsetWidth,
+            height: paperElement.offsetHeight,
+            windowWidth: paperElement.scrollWidth,
+            windowHeight: paperElement.scrollHeight,
+            foreignObjectRendering: true,
+
+            // ▼▼▼▼▼ ここから追加・修正（最重要） ▼▼▼▼▼
+            onclone: function(clonedDoc) {
+                console.log("撮影用クローンを作成中...");
+
+                // 1. 生成済みのBase64フォントスタイルを取得
+                const originalStyle = document.getElementById('embedded-google-fonts');
+                
+                if (originalStyle) {
+                    // 2. クローン側のheadに同じスタイルを強制注入
+                    const newStyle = clonedDoc.createElement('style');
+                    newStyle.textContent = originalStyle.textContent;
+                    clonedDoc.head.appendChild(newStyle);
+                    console.log("★クローン側にもフォント情報を注入しました！");
+                } else {
+                    console.warn("埋め込み用スタイルが見つかりませんでした");
+                }
+                
+                // 3. 念のため表示モードクラスも同期
+                clonedDoc.body.classList.add('preview-mode');
+            }
+            // ▲▲▲▲▲ 追加ここまで ▲▲▲▲▲
           });
           
           const link = document.createElement('a');
