@@ -651,21 +651,9 @@ body.preview-mode .article-group { background-color: transparent; }
     position: absolute; top: 0; left: 0;
     white-space: nowrap; line-height: 1.0; transform-origin: 0 0;
     display: flex; align-items: center; justify-content: center;
-    /* Safari rendering optimization */
-    -webkit-font-smoothing: antialiased;
-    -webkit-transform-origin: 0 0;
   }
-  .headline-v {
-    writing-mode: vertical-rl;
-    transform-origin: top right;
-    right: 0; left: auto;
-    -webkit-transform-origin: top right;
-  }
-  .headline-h {
-    writing-mode: horizontal-tb;
-    transform-origin: top left;
-    -webkit-transform-origin: top left;
-  }
+  .headline-v { writing-mode: vertical-rl; transform-origin: top right; right: 0; left: auto; }
+  .headline-h { writing-mode: horizontal-tb; transform-origin: top left; }
   .tcy { text-combine-upright: all; text-decoration: none; pointer-events: none; }
 
   .correction-box { width: 100%; height: 100%; pointer-events: none; }
@@ -752,18 +740,14 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   .header-title-text {
-      z-index: 2;
+      z-index: 2; 
       background: transparent;
       line-height: 1.0;
       white-space: nowrap;
-      position: relative;
+      position: relative; 
       writing-mode: vertical-rl;
       font-weight: 900;
       paint-order: stroke fill;
-      /* Safari rendering optimization */
-      -webkit-font-smoothing: antialiased;
-      transform-origin: top left;
-      -webkit-transform-origin: top left;
   }
 
   /* --- エディタ・モーダル関連 --- */
@@ -2116,22 +2100,6 @@ body.preview-mode .article-group { background-color: transparent; }
       paperElement.style.top = "0px";
       paperElement.style.margin = "0";
       
-      // Safari判定
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-      // Safariでのレンダリング改善: 見出しと題字の位置調整
-      const headlineAdjustments = [];
-      if (isSafari) {
-          document.querySelectorAll('.headline-inner, .header-title-text').forEach(el => {
-              const currentTransform = el.style.transform || '';
-              headlineAdjustments.push({ el, original: currentTransform });
-              // Safariでのレンダリング時の微調整を追加
-              el.style.willChange = 'transform';
-              el.style.backfaceVisibility = 'hidden';
-              el.style.webkitBackfaceVisibility = 'hidden';
-          });
-      }
-
       // 祖先のoverflowによるクリッピングを避けるため、用紙を一時的にボディ直下へ退避させる
       const tempWrapper = document.createElement('div');
       tempWrapper.style.position = 'absolute';
@@ -2147,10 +2115,9 @@ body.preview-mode .article-group { background-color: transparent; }
       try {
           // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
           // 高さ計算の不整合を防ぐため、windowHeight等を明示
-
           const canvas = await html2canvas(paperElement, {
               scale: 2, // 高解像度
-              useCORS: true,
+              useCORS: true, 
               logging: false,
               backgroundColor: null, // 透過PNG対応
               scrollX: 0, scrollY: 0,
@@ -2159,11 +2126,7 @@ body.preview-mode .article-group { background-color: transparent; }
               height: paperElement.offsetHeight, // ここを要素の高さに合わせる
               windowWidth: paperElement.scrollWidth,
               windowHeight: paperElement.scrollHeight,
-              // SafariではforeignObjectRenderingを無効化（box-shadow等の問題を回避）
-              foreignObjectRendering: !isSafari,
-              // Safariでのレンダリング品質向上
-              allowTaint: false,
-              imageTimeout: 0
+              foreignObjectRendering: true // writing-modeなどCSS依存描画をブラウザに委譲
           });
           
           const link = document.createElement('a');
@@ -2180,16 +2143,6 @@ body.preview-mode .article-group { background-color: transparent; }
           alert("書き出しに失敗しました: " + err);
           console.error(err);
       } finally {
-          // Safariの調整を元に戻す
-          if (isSafari && headlineAdjustments.length > 0) {
-              headlineAdjustments.forEach(({ el, original }) => {
-                  el.style.transform = original;
-                  el.style.willChange = '';
-                  el.style.backfaceVisibility = '';
-                  el.style.webkitBackfaceVisibility = '';
-              });
-          }
-
           // 用紙を元の位置に戻す
           if (tempWrapper && tempWrapper.parentNode) {
               originalParent.insertBefore(paperElement, originalNext);
@@ -3942,9 +3895,7 @@ function updateFreeTextAttr() {
              
              if (isVertical) { content.style.right = padShort + 'px'; content.style.top = padLong + 'px'; }
              else { content.style.left = padLong + 'px'; content.style.top = padShort + 'px'; }
-             const finalTransform = `${baseTransform} ${tr}`;
-             content.style.transform = finalTransform;
-             content.style.webkitTransform = finalTransform;
+             content.style.transform = `${baseTransform} ${tr}`;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -4028,11 +3979,9 @@ function updateFreeTextAttr() {
 
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
-          const finalTransform = isVertical
+          titleText.style.transform = isVertical
               ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
               : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
-          titleText.style.transform = finalTransform;
-          titleText.style.webkitTransform = finalTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
