@@ -2116,6 +2116,22 @@ body.preview-mode .article-group { background-color: transparent; }
       paperElement.style.top = "0px";
       paperElement.style.margin = "0";
       
+      // Safari判定
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+      // Safariでのレンダリング改善: 見出しと題字の位置調整
+      const headlineAdjustments = [];
+      if (isSafari) {
+          document.querySelectorAll('.headline-inner, .header-title-text').forEach(el => {
+              const currentTransform = el.style.transform || '';
+              headlineAdjustments.push({ el, original: currentTransform });
+              // Safariでのレンダリング時の微調整を追加
+              el.style.willChange = 'transform';
+              el.style.backfaceVisibility = 'hidden';
+              el.style.webkitBackfaceVisibility = 'hidden';
+          });
+      }
+
       // 祖先のoverflowによるクリッピングを避けるため、用紙を一時的にボディ直下へ退避させる
       const tempWrapper = document.createElement('div');
       tempWrapper.style.position = 'absolute';
@@ -2131,9 +2147,10 @@ body.preview-mode .article-group { background-color: transparent; }
       try {
           // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
           // 高さ計算の不整合を防ぐため、windowHeight等を明示
+
           const canvas = await html2canvas(paperElement, {
               scale: 2, // 高解像度
-              useCORS: true, 
+              useCORS: true,
               logging: false,
               backgroundColor: null, // 透過PNG対応
               scrollX: 0, scrollY: 0,
@@ -2142,7 +2159,11 @@ body.preview-mode .article-group { background-color: transparent; }
               height: paperElement.offsetHeight, // ここを要素の高さに合わせる
               windowWidth: paperElement.scrollWidth,
               windowHeight: paperElement.scrollHeight,
-              foreignObjectRendering: true // writing-modeなどCSS依存描画をブラウザに委譲
+              // SafariではforeignObjectRenderingを無効化（box-shadow等の問題を回避）
+              foreignObjectRendering: !isSafari,
+              // Safariでのレンダリング品質向上
+              allowTaint: false,
+              imageTimeout: 0
           });
           
           const link = document.createElement('a');
@@ -2159,6 +2180,16 @@ body.preview-mode .article-group { background-color: transparent; }
           alert("書き出しに失敗しました: " + err);
           console.error(err);
       } finally {
+          // Safariの調整を元に戻す
+          if (isSafari && headlineAdjustments.length > 0) {
+              headlineAdjustments.forEach(({ el, original }) => {
+                  el.style.transform = original;
+                  el.style.willChange = '';
+                  el.style.backfaceVisibility = '';
+                  el.style.webkitBackfaceVisibility = '';
+              });
+          }
+
           // 用紙を元の位置に戻す
           if (tempWrapper && tempWrapper.parentNode) {
               originalParent.insertBefore(paperElement, originalNext);
@@ -2904,8 +2935,8 @@ function updateFreeTextAttr() {
     canvasTransform.style.transform = `translate(${viewX}px, ${viewY}px) scale(${viewScale})`;
 
     // 縮小時に線が消えないよう、拡大率に応じて線の太さを調整
-    // viewScaleが小さいほど、線を太くする（最低1px保証）
-    const minVisibleWidth = Math.max(1, 1 / viewScale);
+    // 画面上で最低0.5pxを保証（これ以下だと消える）
+    const minVisibleWidth = Math.max(0.5, 0.5 / viewScale);
     root.style.setProperty('--border-width', minVisibleWidth + 'px');
     root.style.setProperty('--divider-width', minVisibleWidth + 'px');
   }
