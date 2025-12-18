@@ -2101,55 +2101,53 @@ body.preview-mode .article-group { background-color: transparent; }
 // ▼▼▼ ここからコピーして、既存の exportCanvasToImage 関数と置き換えてください ▼▼▼
 
 // 【新規追加】Google Fontsを強制的にBase64化して埋め込む関数
-// ▼▼▼ 修正版: embedGoogleFonts関数 ▼▼▼
+// ▼▼▼ 完成版: embedGoogleFonts関数（preconnect除外対策済み） ▼▼▼
 async function embedGoogleFonts() {
     console.log("フォント埋め込み処理を開始します...");
-    
-    // プロトコルチェック（重要）
+
+    // プロトコルチェック
     if(window.location.protocol === 'file:') {
-        alert("【注意】HTMLファイルを直接開いています。\nフォントの埋め込みはセキュリティ制限によりブロックされます。\nVS Codeの「Live Server」等を使って http:// から始まるURLで開いてください。");
-        console.warn("プロトコルがfile:です。処理が失敗する可能性があります。");
+        alert("【注意】HTMLファイルを直接開いています。\nフォント埋め込みはセキュリティ制限で動きません。\nLive Server等(http://...)で開いてください。");
+        return; // fileプロトコルなら即終了
     }
 
-    const links = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
-    console.log(`Google Fontsのリンク数: ${links.length}`);
+    // ★修正点: rel="stylesheet" が付いているものだけを取得（preconnectを除外）
+    const links = document.querySelectorAll('link[rel="stylesheet"][href*="fonts.googleapis.com"]');
+    console.log(`処理対象のCSSリンク数: ${links.length}`);
     
     if (links.length === 0) {
-        console.log("Google Fontsが見つかりませんでした。");
+        console.warn("Google FontsのCSSリンク(rel=stylesheet)が見つかりません。");
         return;
     }
 
-    // 重複実行防止
+    // 重複防止
     if (document.getElementById('embedded-google-fonts')) {
-        console.log("既にフォントは埋め込み済みです。");
+        console.log("既にフォントは埋め込み済みです。スキップします。");
         return;
     }
 
     try {
         const fetchPromises = Array.from(links).map(async (link) => {
             try {
-                console.log(`CSS取得開始: ${link.href}`);
+                console.log(`CSS取得中...: ${link.href}`);
                 const cssRes = await fetch(link.href);
+                if (!cssRes.ok) throw new Error(`HTTP error! status: ${cssRes.status}`);
+                
                 let cssText = await cssRes.text();
 
-                // ★修正ポイント: URL抽出の正規表現を強化（クォート ' " の有無両対応）
-                // url('https://...') と url(https://...) の両方をマッチさせる
+                // 正規表現: url('...') または url("...") または url(...) に対応
                 const urlRegex = /url\s*\(\s*(['"]?)(https:\/\/fonts\.gstatic\.com\/[^)'"]+)\1\s*\)/g;
                 
                 let match;
                 const fontDownloads = [];
-
-                // CSS内の全URLを走査
+                
+                // CSS内のURLをすべてリストアップ
                 while ((match = urlRegex.exec(cssText)) !== null) {
-                    // match[2] が実際のURL
                     const originalUrl = match[2];
                     
-                    // フォントファイルをダウンロードしてBase64化
+                    // フォントDL処理
                     const downloadPromise = fetch(originalUrl)
-                        .then(res => {
-                            if (!res.ok) throw new Error(`Status ${res.status}`);
-                            return res.blob();
-                        })
+                        .then(res => res.blob())
                         .then(blob => new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onloadend = () => resolve({ originalUrl, base64: reader.result });
@@ -2157,48 +2155,57 @@ async function embedGoogleFonts() {
                             reader.readAsDataURL(blob);
                         }))
                         .catch(err => {
-                            console.warn(`フォントDL失敗 (${originalUrl}):`, err);
+                            console.warn(`フォントDL失敗: ${originalUrl}`, err);
                             return null;
                         });
                     
                     fontDownloads.push(downloadPromise);
                 }
 
-                // 全フォントの変換を待機
-                const convertedFonts = await Promise.all(fontDownloads);
-                console.log(`CSS内のフォント変換数: ${convertedFonts.filter(x=>x).length} / ${fontDownloads.length}`);
+                if (fontDownloads.length === 0) {
+                    console.warn(`このCSSにはフォントURLが見つかりませんでした: ${link.href}`);
+                    return cssText; // URLがない場合はそのまま返す
+                }
 
-                // CSSテキスト内のURLをBase64に置換
+                // 全フォント変換待機
+                const convertedFonts = await Promise.all(fontDownloads);
+                
+                let replacedCount = 0;
                 convertedFonts.forEach(item => {
                     if (item && item.base64) {
-                        // 文字列置換（URLが含まれる箇所をすべてBase64に）
-                        cssText = cssText.split(item.originalUrl).join(item.base64);
+                        // 文字列置換: URLをBase64に書き換え
+                        while (cssText.indexOf(item.originalUrl) !== -1) {
+                            cssText = cssText.replace(item.originalUrl, item.base64);
+                            replacedCount++;
+                        }
                     }
                 });
+                console.log(`変換完了: ${replacedCount} 箇所のフォントURLをBase64化しました。`);
 
                 return cssText;
+
             } catch (e) {
-                console.warn("CSS解析中のエラー:", e);
+                console.error(`CSS処理エラー (${link.href}):`, e);
                 return "";
             }
         });
 
+        // 全CSSの処理完了を待つ
         const allCss = await Promise.all(fetchPromises);
         
-        // スタイルタグとしてheadに追加
+        // styleタグ生成
         const style = document.createElement('style');
         style.id = 'embedded-google-fonts';
         style.textContent = allCss.join('\n');
         document.head.appendChild(style);
         
-        console.log("★フォント埋め込み完了！成功しました。");
+        console.log("★フォント埋め込み成功！");
 
     } catch (e) {
-        console.error("フォント埋め込み処理全体でエラーが発生:", e);
-        // nullの原因がここならエラー内容が表示されます
+        console.error("埋め込み処理全体で致命的なエラー:", e);
     }
 }
-// ▲▲▲ 修正版ここまで ▲▲▲
+// ▲▲▲ 完成版ここまで ▲▲▲
   // 【書き換え】書き出し実行関数
   async function exportCanvasToImage(format) {
       document.getElementById('export-menu-overlay').style.display='none';
