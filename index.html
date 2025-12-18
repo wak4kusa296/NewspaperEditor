@@ -2129,11 +2129,14 @@ body.preview-mode .article-group { background-color: transparent; }
       document.documentElement.style.overflow = 'visible';
 
       try {
+          // Safari判定
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
           // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
           // 高さ計算の不整合を防ぐため、windowHeight等を明示
           const canvas = await html2canvas(paperElement, {
               scale: 2, // 高解像度
-              useCORS: true, 
+              useCORS: true,
               logging: false,
               backgroundColor: null, // 透過PNG対応
               scrollX: 0, scrollY: 0,
@@ -2142,7 +2145,7 @@ body.preview-mode .article-group { background-color: transparent; }
               height: paperElement.offsetHeight, // ここを要素の高さに合わせる
               windowWidth: paperElement.scrollWidth,
               windowHeight: paperElement.scrollHeight,
-              foreignObjectRendering: true // writing-modeなどCSS依存描画をブラウザに委譲
+              foreignObjectRendering: !isSafari // SafariではforeignObjectRenderingを無効化
           });
           
           const link = document.createElement('a');
@@ -4026,10 +4029,22 @@ function updateFreeTextAttr() {
                  content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
                  content.style.backfaceVisibility = 'hidden';
                  content.style.webkitBackfaceVisibility = 'hidden';
+                 // Safariではnudgeをtransformに含めるとずれるため、別々に設定
+                 const nudgeX = g.nudgeX || 0;
+                 const nudgeY = g.nudgeY || 0;
+                 if (isVertical) {
+                     content.style.right = (padShort - nudgeX) + 'px';
+                     content.style.top = (padLong + nudgeY) + 'px';
+                 } else {
+                     content.style.left = (padLong + nudgeX) + 'px';
+                     content.style.top = (padShort + nudgeY) + 'px';
+                 }
+                 content.style.transform = baseTransform;
+                 content.style.webkitTransform = baseTransform;
+             } else {
+                 content.style.transform = `${baseTransform} ${tr}`;
+                 content.style.webkitTransform = `${baseTransform} ${tr}`;
              }
-
-             content.style.transform = `${baseTransform} ${tr}`;
-             content.style.webkitTransform = `${baseTransform} ${tr}`;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -4119,16 +4134,24 @@ function updateFreeTextAttr() {
 
           // Safariでのレンダリング補正を追加
           if (isSafari) {
+              titleText.style.transformOrigin = 'top left';
               titleText.style.webkitTransformOrigin = 'top left';
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
+              // Safariではtranslateとscaleを別々に適用するとずれが少ない
+              // translateをマージンで代用
+              titleText.style.marginLeft = translateX + 'px';
+              titleText.style.marginTop = translateY + 'px';
+              const scaleOnlyTransform = isVertical ? `scale(1, ${scale})` : `scale(${scale}, 1)`;
+              titleText.style.transform = scaleOnlyTransform;
+              titleText.style.webkitTransform = scaleOnlyTransform;
+          } else {
+              const finalTransform = isVertical
+                  ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
+                  : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
+              titleText.style.transform = finalTransform;
+              titleText.style.webkitTransform = finalTransform;
           }
-
-          const finalTransform = isVertical
-              ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
-              : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
-          titleText.style.transform = finalTransform;
-          titleText.style.webkitTransform = finalTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
