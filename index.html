@@ -2148,48 +2148,56 @@ body.preview-mode .article-group { background-color: transparent; }
           // 追加の待機時間（フォントが完全に適用されるまで）
           await new Promise(resolve => setTimeout(resolve, 100));
 
-          // 見出しと題字をラスタライズ
+          // 見出しと題字をラスタライズ（Safari/iPad対応）
           const headlinesAndHeaders = paperElement.querySelectorAll('.group[data-type="headline"], .group[data-type="header"]');
           for (const group of headlinesAndHeaders) {
               const svg = group.querySelector('svg');
               if (!svg) continue;
 
-              // SVGを画像化
-              const svgData = new XMLSerializer().serializeToString(svg);
-              const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-              const svgUrl = URL.createObjectURL(svgBlob);
+              try {
+                  // html2canvasで個別にSVG要素をレンダリング
+                  const tempContainer = document.createElement('div');
+                  tempContainer.style.position = 'absolute';
+                  tempContainer.style.left = '-9999px';
+                  tempContainer.style.top = '0';
+                  tempContainer.style.width = svg.getAttribute('width') + 'px';
+                  tempContainer.style.height = svg.getAttribute('height') + 'px';
+                  document.body.appendChild(tempContainer);
 
-              // 画像を読み込み
-              const img = new Image();
-              await new Promise((resolve, reject) => {
-                  img.onload = resolve;
-                  img.onerror = reject;
-                  img.src = svgUrl;
-              });
+                  const svgClone = svg.cloneNode(true);
+                  tempContainer.appendChild(svgClone);
 
-              // Canvasに描画
-              const canvas = document.createElement('canvas');
-              canvas.width = svg.getAttribute('width') * 2; // 高解像度
-              canvas.height = svg.getAttribute('height') * 2;
-              const ctx = canvas.getContext('2d');
-              ctx.scale(2, 2);
-              ctx.drawImage(img, 0, 0);
+                  // html2canvasでSVGをレンダリング
+                  const svgCanvas = await html2canvas(tempContainer, {
+                      scale: 2,
+                      useCORS: true,
+                      logging: false,
+                      backgroundColor: null,
+                      foreignObjectRendering: true,
+                      width: parseInt(svg.getAttribute('width')),
+                      height: parseInt(svg.getAttribute('height'))
+                  });
 
-              // Canvas を画像に変換
-              const imgDataUrl = canvas.toDataURL('image/png');
-              URL.revokeObjectURL(svgUrl);
+                  document.body.removeChild(tempContainer);
 
-              // SVGをimg要素に置き換え
-              const imgElement = document.createElement('img');
-              imgElement.src = imgDataUrl;
-              imgElement.style.position = 'absolute';
-              imgElement.style.left = '0';
-              imgElement.style.top = '0';
-              imgElement.style.width = svg.getAttribute('width') + 'px';
-              imgElement.style.height = svg.getAttribute('height') + 'px';
-              imgElement.style.pointerEvents = 'none';
+                  // Canvas を画像に変換
+                  const imgDataUrl = svgCanvas.toDataURL('image/png');
 
-              svg.replaceWith(imgElement);
+                  // SVGをimg要素に置き換え
+                  const imgElement = document.createElement('img');
+                  imgElement.src = imgDataUrl;
+                  imgElement.style.position = 'absolute';
+                  imgElement.style.left = '0';
+                  imgElement.style.top = '0';
+                  imgElement.style.width = svg.getAttribute('width') + 'px';
+                  imgElement.style.height = svg.getAttribute('height') + 'px';
+                  imgElement.style.pointerEvents = 'none';
+
+                  svg.replaceWith(imgElement);
+              } catch (err) {
+                  console.error('Failed to rasterize headline/header:', err);
+                  // エラー時はSVGのまま継続
+              }
           }
 
           // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
