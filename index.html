@@ -4013,38 +4013,29 @@ function updateFreeTextAttr() {
              
              // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+             const nudgeX = g.nudgeX || 0;
+             const nudgeY = g.nudgeY || 0;
 
              if (isVertical) {
-                 content.style.right = padShort + 'px';
-                 content.style.top = padLong + 'px';
+                 content.style.right = (padShort - nudgeX) + 'px';
+                 content.style.top = (padLong + nudgeY) + 'px';
                  content.style.left = 'auto';
              } else {
-                 content.style.left = padLong + 'px';
-                 content.style.top = padShort + 'px';
+                 content.style.left = (padLong + nudgeX) + 'px';
+                 content.style.top = (padShort + nudgeY) + 'px';
                  content.style.right = 'auto';
              }
 
              // Safariでのレンダリング補正を追加
              if (isSafari) {
+                 content.style.transformOrigin = isVertical ? 'top right' : 'top left';
                  content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
                  content.style.backfaceVisibility = 'hidden';
                  content.style.webkitBackfaceVisibility = 'hidden';
-                 // Safariではnudgeをtransformに含めるとずれるため、別々に設定
-                 const nudgeX = g.nudgeX || 0;
-                 const nudgeY = g.nudgeY || 0;
-                 if (isVertical) {
-                     content.style.right = (padShort - nudgeX) + 'px';
-                     content.style.top = (padLong + nudgeY) + 'px';
-                 } else {
-                     content.style.left = (padLong + nudgeX) + 'px';
-                     content.style.top = (padShort + nudgeY) + 'px';
-                 }
-                 content.style.transform = baseTransform;
-                 content.style.webkitTransform = baseTransform;
-             } else {
-                 content.style.transform = `${baseTransform} ${tr}`;
-                 content.style.webkitTransform = `${baseTransform} ${tr}`;
              }
+
+             content.style.transform = baseTransform;
+             content.style.webkitTransform = baseTransform;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -4138,20 +4129,13 @@ function updateFreeTextAttr() {
               titleText.style.webkitTransformOrigin = 'top left';
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
-              // Safariではtranslateとscaleを別々に適用するとずれが少ない
-              // translateをマージンで代用
-              titleText.style.marginLeft = translateX + 'px';
-              titleText.style.marginTop = translateY + 'px';
-              const scaleOnlyTransform = isVertical ? `scale(1, ${scale})` : `scale(${scale}, 1)`;
-              titleText.style.transform = scaleOnlyTransform;
-              titleText.style.webkitTransform = scaleOnlyTransform;
-          } else {
-              const finalTransform = isVertical
-                  ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
-                  : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
-              titleText.style.transform = finalTransform;
-              titleText.style.webkitTransform = finalTransform;
           }
+
+          const finalTransform = isVertical
+              ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
+              : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
+          titleText.style.transform = finalTransform;
+          titleText.style.webkitTransform = finalTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
