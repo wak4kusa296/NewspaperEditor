@@ -4003,21 +4003,22 @@ function updateFreeTextAttr() {
           const padLong = g.padLong || 0; const padShort = g.padShort || 0;
           const availW = g.w - (isVertical ? (padShort * 2) : (padLong * 2));
           const availH = totalH - (isVertical ? (padLong * 2) : (padShort * 2));
-          
+
           if (availW > 0 && availH > 0) {
              const shortSide = isVertical ? availW : availH;
              const longSide = isVertical ? availH : availW;
              content.style.fontSize = shortSide + 'px';
-             
-             hlMeasureBox.innerHTML = htmlText; 
+
+             hlMeasureBox.innerHTML = htmlText;
              hlMeasureBox.style.fontFamily = g.fontFamily; hlMeasureBox.style.fontWeight = g.fontWeight;
              hlMeasureBox.style.fontSize = shortSide + 'px';
-             
+
              // Safari rendering bug workaround: Force reflow on the measurement element itself
              window.getComputedStyle(hlMeasureBox).fontSize;
 
              const actualLen = hlMeasureBox.offsetWidth;
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
+
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
 
              // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
@@ -4033,10 +4034,15 @@ function updateFreeTextAttr() {
                  content.style.right = 'auto';
              }
 
-             // Safari対応: backfaceVisibilityのみ設定（transformOriginはCSSに任せる）
+             // Safari対応: transformOriginを明示的に設定
              if (isSafari) {
                  content.style.backfaceVisibility = 'hidden';
                  content.style.webkitBackfaceVisibility = 'hidden';
+                 content.style.transformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.willChange = 'transform';
+                 // Safari特有のピクセルずれ補正
+                 content.style.webkitFontSmoothing = 'subpixel-antialiased';
              }
 
              content.style.transform = baseTransform;
@@ -4134,10 +4140,15 @@ function updateFreeTextAttr() {
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
 
-          // Safari対応: backfaceVisibilityのみ設定（transformOriginはCSSデフォルトに任せる）
+          // Safari対応: transformOriginを明示的に設定
           if (isSafari) {
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
+              titleText.style.transformOrigin = '0 0';
+              titleText.style.webkitTransformOrigin = '0 0';
+              titleText.style.willChange = 'transform';
+              // Safari特有のピクセルずれ補正
+              titleText.style.webkitFontSmoothing = 'subpixel-antialiased';
           }
 
           const scaleTransform = isVertical
