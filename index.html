@@ -2140,6 +2140,14 @@ body.preview-mode .article-group { background-color: transparent; }
       document.documentElement.style.overflow = 'visible';
 
       try {
+          // フォントの読み込みを待つ
+          if (document.fonts && document.fonts.ready) {
+              await document.fonts.ready;
+          }
+
+          // 追加の待機時間（フォントが完全に適用されるまで）
+          await new Promise(resolve => setTimeout(resolve, 100));
+
           // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
           // 高さ計算の不整合を防ぐため、windowHeight等を明示
           const canvas = await html2canvas(paperElement, {
