@@ -765,6 +765,15 @@ body.preview-mode .article-group { background-color: transparent; }
       paint-order: stroke fill;
   }
 
+  .header-title-transform {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+
   /* --- エディタ・モーダル関連 --- */
   .inline-editor {
     position: absolute; z-index: 9999; writing-mode: vertical-rl;
@@ -4086,7 +4095,10 @@ function updateFreeTextAttr() {
           const padV = g.titlePadV || 10;
           const padH = g.titlePadH || 5;
 
-          titleBoxInner.appendChild(titleText);
+          const titleTextWrapper = document.createElement('div');
+          titleTextWrapper.className = 'header-title-transform';
+          titleTextWrapper.appendChild(titleText);
+          titleBoxInner.appendChild(titleTextWrapper);
           titleBoxOuter.appendChild(titleBoxInner);
           box.appendChild(titleBoxOuter);
 
@@ -4096,20 +4108,30 @@ function updateFreeTextAttr() {
           const availW = Math.max(10, g.w - (borderSpace * 2) - (padH * 2));
           const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
           const isVertical = availH > availW;
+          const transformOrigin = isVertical ? 'top right' : 'top left';
 
           titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
           titleText.style.lineHeight = isVertical ? '1.0' : '0.85';
 
+          if (isVertical) {
+              titleTextWrapper.style.justifyContent = 'flex-end';
+              titleTextWrapper.style.alignItems = 'flex-start';
+          } else {
+              titleTextWrapper.style.justifyContent = 'flex-start';
+              titleTextWrapper.style.alignItems = 'flex-start';
+          }
+
           const shortSide = isVertical ? availW : availH;
           const longSide = isVertical ? availH : availW;
-          const fontSize = shortSide;
-          titleText.style.fontSize = fontSize + 'px';
+          const baseFontSize = shortSide;
+          titleText.style.fontSize = baseFontSize + 'px';
 
           headerMeasureBox.innerText = g.text;
           headerMeasureBox.style.fontFamily = g.fontFamily || config.fontFamily;
           headerMeasureBox.style.fontWeight = g.fontWeight || 900;
-          headerMeasureBox.style.fontSize = fontSize + 'px';
+          headerMeasureBox.style.fontSize = baseFontSize + 'px';
           headerMeasureBox.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
+          window.getComputedStyle(headerMeasureBox).fontSize;
 
           const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
           const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
@@ -4120,18 +4142,22 @@ function updateFreeTextAttr() {
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
 
+          titleText.style.transformOrigin = transformOrigin;
+          titleText.style.webkitTransformOrigin = transformOrigin;
           if (isSafari) {
-              titleText.style.transformOrigin = 'top left';
-              titleText.style.webkitTransformOrigin = 'top left';
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
           }
 
-          const finalTransform = isVertical
-              ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
-              : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
-          titleText.style.transform = finalTransform;
-          titleText.style.webkitTransform = finalTransform;
+          const translateTransform = `translate(${translateX}px, ${translateY}px)`;
+          titleTextWrapper.style.transform = translateTransform;
+          titleTextWrapper.style.webkitTransform = translateTransform;
+
+          const scaleTransform = isVertical
+              ? `scale(1, ${scale})`
+              : `scale(${scale}, 1)`;
+          titleText.style.transform = scaleTransform;
+          titleText.style.webkitTransform = scaleTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
