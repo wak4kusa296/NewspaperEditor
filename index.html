@@ -666,6 +666,7 @@ body.preview-mode .article-group { background-color: transparent; }
     position: absolute; top: 0; left: 0;
     white-space: nowrap; line-height: 1.0; transform-origin: 0 0;
     display: flex; align-items: center; justify-content: center;
+    transform-box: fill-box;
   }
   .headline-v { writing-mode: vertical-rl; transform-origin: top right; right: 0; left: auto; line-height: 1.0; }
   .headline-h { writing-mode: horizontal-tb; transform-origin: top left; line-height: 0.9; }
@@ -763,6 +764,7 @@ body.preview-mode .article-group { background-color: transparent; }
       writing-mode: vertical-rl;
       font-weight: 900;
       paint-order: stroke fill;
+      transform-box: fill-box;
   }
 
   .header-title-transform {
@@ -4040,12 +4042,13 @@ function updateFreeTextAttr() {
                  content.style.right = 'auto';
              }
 
-             // Safari対応: transformOriginを明示的に設定
+             // Safari対応: transformOriginとtransformBoxを明示的に設定
              if (isSafari) {
                  content.style.backfaceVisibility = 'hidden';
                  content.style.webkitBackfaceVisibility = 'hidden';
                  content.style.transformOrigin = isVertical ? 'top right' : 'top left';
                  content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.transformBox = 'border-box';
                  content.style.willChange = 'transform';
                  // Safari特有のピクセルずれ補正
                  content.style.webkitFontSmoothing = 'subpixel-antialiased';
@@ -4149,12 +4152,13 @@ function updateFreeTextAttr() {
           const translateX = Math.round(g.titleNudgeX || 0);
           const translateY = Math.round(g.titleNudgeY || 0);
 
-          // Safari対応: transformOriginを明示的に設定
+          // Safari対応: transformOriginとtransformBoxを明示的に設定
           if (isSafari) {
               titleText.style.backfaceVisibility = 'hidden';
               titleText.style.webkitBackfaceVisibility = 'hidden';
               titleText.style.transformOrigin = '0 0';
               titleText.style.webkitTransformOrigin = '0 0';
+              titleText.style.transformBox = 'border-box';
               titleText.style.willChange = 'transform';
               // Safari特有のピクセルずれ補正
               titleText.style.webkitFontSmoothing = 'subpixel-antialiased';
