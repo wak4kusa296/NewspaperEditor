@@ -3986,9 +3986,11 @@ function updateFreeTextAttr() {
       if (g.type === 'headline') {
           const isVertical = (totalH > g.w);
           const wrapper = document.createElement('div'); wrapper.className = 'headline-wrapper';
-          const isInverted = (g.isInverted !== false); 
+          const isInverted = (g.isInverted !== false);
           wrapper.style.backgroundColor = isInverted ? config.textColor : config.paperColor;
           wrapper.style.boxShadow = `calc(var(--line-gap)*-1) 0 0 0 ${config.paperColor}, var(--line-gap) 0 0 0 ${config.paperColor}`;
+          wrapper.style.transform = tr;
+          wrapper.style.webkitTransform = tr;
           
           const content = document.createElement('div');
           content.className = 'headline-inner ' + (isVertical ? 'headline-v' : 'headline-h');
@@ -4037,8 +4039,8 @@ function updateFreeTextAttr() {
                  content.style.webkitBackfaceVisibility = 'hidden';
              }
 
-             content.style.transform = `${baseTransform} ${tr}`;
-             content.style.webkitTransform = `${baseTransform} ${tr}`;
+             content.style.transform = baseTransform;
+             content.style.webkitTransform = baseTransform;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -4138,15 +4140,12 @@ function updateFreeTextAttr() {
               titleText.style.webkitBackfaceVisibility = 'hidden';
           }
 
-          const translateTransform = `translate(${translateX}px, ${translateY}px)`;
-          titleTextWrapper.style.transform = translateTransform;
-          titleTextWrapper.style.webkitTransform = translateTransform;
-
           const scaleTransform = isVertical
               ? `scale(1, ${scale})`
               : `scale(${scale}, 1)`;
-          titleText.style.transform = scaleTransform;
-          titleText.style.webkitTransform = scaleTransform;
+          const combinedTransform = `translate(${translateX}px, ${translateY}px) ${scaleTransform}`;
+          titleText.style.transform = combinedTransform;
+          titleText.style.webkitTransform = combinedTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
