@@ -4124,6 +4124,8 @@ function updateFreeTextAttr() {
                              const charSpan = document.createElement('span');
                              charSpan.innerText = char;
                              charSpan.style.display = 'inline-block';
+                             charSpan.style.fontFamily = g.fontFamily;
+                             charSpan.style.fontWeight = g.fontWeight;
                              charSpan.style.fontSize = tcyFontSize + 'px';
                              charSpan.style.lineHeight = '1.0';
                              charSpan.style.verticalAlign = 'middle';
@@ -4353,6 +4355,8 @@ function updateFreeTextAttr() {
                           const charSpan = document.createElement('span');
                           charSpan.innerText = char;
                           charSpan.style.display = 'inline-block';
+                          charSpan.style.fontFamily = g.fontFamily || config.fontFamily;
+                          charSpan.style.fontWeight = g.fontWeight || 900;
                           charSpan.style.fontSize = tcyFontSize + 'px';
                           charSpan.style.lineHeight = '1.0';
                           charSpan.style.verticalAlign = 'middle';
