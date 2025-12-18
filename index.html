@@ -4021,6 +4021,11 @@ function updateFreeTextAttr() {
       el.style.height = totalH + 'px';
       if(selectedId === g.id) el.classList.add('selected');
 
+      // 見出しと題字には左右に紙色のシャドウを追加
+      if (g.type === 'headline' || g.type === 'header') {
+          el.style.boxShadow = `${-config.lineGap}px 0 0 0 ${config.paperColor}, ${config.lineGap}px 0 0 0 ${config.paperColor}`;
+      }
+
       // リサイズハンドルを四隅に配置
       const handleTL = document.createElement('div');
       handleTL.className = 'resize-handle resize-handle-tl';
@@ -4236,14 +4241,23 @@ function updateFreeTextAttr() {
           svg.style.pointerEvents = 'none';
           svg.style.transform = tr;
 
-          // 背景と左右余白
-          const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          bgRect.setAttribute('x', -config.lineGap);
-          bgRect.setAttribute('y', 0);
-          bgRect.setAttribute('width', g.w + config.lineGap * 2);
-          bgRect.setAttribute('height', totalH);
-          bgRect.setAttribute('fill', config.paperColor);
-          svg.appendChild(bgRect);
+          // 左の余白背景（紙の色で塗りつぶし）
+          const leftRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          leftRect.setAttribute('x', -config.lineGap);
+          leftRect.setAttribute('y', 0);
+          leftRect.setAttribute('width', config.lineGap);
+          leftRect.setAttribute('height', totalH);
+          leftRect.setAttribute('fill', config.paperColor);
+          svg.appendChild(leftRect);
+
+          // 右の余白背景（紙の色で塗りつぶし）
+          const rightRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rightRect.setAttribute('x', g.w);
+          rightRect.setAttribute('y', 0);
+          rightRect.setAttribute('width', config.lineGap);
+          rightRect.setAttribute('height', totalH);
+          rightRect.setAttribute('fill', config.paperColor);
+          svg.appendChild(rightRect);
 
           // foreignObjectで題字の構造を埋め込み
           const fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
