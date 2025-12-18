@@ -4063,20 +4063,21 @@ function updateFreeTextAttr() {
              textSpan.style.whiteSpace = 'nowrap';
              textSpan.style.lineHeight = isVertical ? '1.0' : '0.9';
              textSpan.style.position = 'absolute';
-             textSpan.style.display = 'flex';
-             textSpan.style.alignItems = 'center';
-             textSpan.style.justifyContent = 'center';
+             textSpan.style.left = '0';
+             textSpan.style.top = '0';
+             textSpan.style.transformOrigin = '0 0';
 
+             // 絶対座標で位置を計算
              if (isVertical) {
-                 textSpan.style.right = padShort + 'px';
-                 textSpan.style.top = padLong + 'px';
-                 textSpan.style.transformOrigin = 'top right';
-                 textSpan.style.transform = `scale(1, ${scaleFactor})`;
+                 // 縦書き：右上からpadShort分左、padLong分下の位置
+                 const absoluteX = g.w - padShort - shortSide;
+                 const absoluteY = padLong;
+                 textSpan.style.transform = `translate(${absoluteX}px, ${absoluteY}px) scale(1, ${scaleFactor})`;
              } else {
-                 textSpan.style.left = padLong + 'px';
-                 textSpan.style.top = padShort + 'px';
-                 textSpan.style.transformOrigin = 'top left';
-                 textSpan.style.transform = `scale(${scaleFactor}, 1)`;
+                 // 横書き：左上からpadLong分右、padShort分下の位置
+                 const absoluteX = padLong;
+                 const absoluteY = padShort;
+                 textSpan.style.transform = `translate(${absoluteX}px, ${absoluteY}px) scale(${scaleFactor}, 1)`;
              }
 
              contentDiv.appendChild(textSpan);
@@ -4123,31 +4124,34 @@ function updateFreeTextAttr() {
           containerDiv.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
           containerDiv.style.width = '100%';
           containerDiv.style.height = '100%';
-          containerDiv.style.display = 'flex';
-          containerDiv.style.flexDirection = 'column';
+          containerDiv.style.position = 'relative';
 
-          // 外枠
+          // 外枠（絶対配置）
           const outerBox = document.createElement('div');
-          outerBox.style.flex = '1';
+          outerBox.style.position = 'absolute';
+          outerBox.style.left = '0';
+          outerBox.style.top = '0';
+          outerBox.style.width = g.w + 'px';
+          outerBox.style.height = totalH + 'px';
           outerBox.style.border = `${borderOut}px solid ${config.textColor}`;
           outerBox.style.padding = '4px';
           outerBox.style.boxSizing = 'border-box';
-          outerBox.style.display = 'flex';
           outerBox.style.backgroundColor = config.paperColor;
           outerBox.style.overflow = 'hidden';
           outerBox.style.borderRadius = '2px';
 
-          // 内枠
+          // 内枠（絶対配置）
           const innerBox = document.createElement('div');
-          innerBox.style.flex = '1';
+          innerBox.style.position = 'absolute';
+          innerBox.style.left = borderOut + 4 + 'px';
+          innerBox.style.top = borderOut + 4 + 'px';
+          innerBox.style.width = (g.w - (borderOut + 4) * 2) + 'px';
+          innerBox.style.height = (totalH - (borderOut + 4) * 2) + 'px';
           innerBox.style.border = `${borderIn}px solid ${config.textColor}`;
-          innerBox.style.position = 'relative';
           innerBox.style.overflow = 'hidden';
-          innerBox.style.display = 'flex';
-          innerBox.style.alignItems = 'center';
-          innerBox.style.justifyContent = 'center';
           innerBox.style.padding = `${padV}px ${padH}px`;
           innerBox.style.borderRadius = '1px';
+          innerBox.style.boxSizing = 'border-box';
 
           // 地紋パターン
           const patternSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -4204,7 +4208,10 @@ function updateFreeTextAttr() {
           textSpan.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
           textSpan.style.lineHeight = isVertical ? '1.0' : '0.85';
           textSpan.style.whiteSpace = 'nowrap';
-          textSpan.style.position = 'relative';
+          textSpan.style.position = 'absolute';
+          textSpan.style.left = '0';
+          textSpan.style.top = '0';
+          textSpan.style.transformOrigin = '0 0';
           textSpan.style.zIndex = '2';
           textSpan.style.background = 'transparent';
 
@@ -4214,9 +4221,11 @@ function updateFreeTextAttr() {
               textSpan.style.paintOrder = 'stroke fill';
           }
 
+          // 絶対座標で位置を計算（innerBoxの中での位置）
           const scaleTransform = isVertical ? `scale(1, ${scale})` : `scale(${scale}, 1)`;
-          textSpan.style.transform = `translate(${translateX}px, ${translateY}px) ${scaleTransform}`;
-          textSpan.style.transformOrigin = '0 0';
+          const absoluteX = borderOut + 4 + borderIn + padH + translateX;
+          const absoluteY = borderOut + 4 + borderIn + padV + translateY;
+          textSpan.style.transform = `translate(${absoluteX}px, ${absoluteY}px) ${scaleTransform}`;
 
           innerBox.appendChild(textSpan);
           outerBox.appendChild(innerBox);
