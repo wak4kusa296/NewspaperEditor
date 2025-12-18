@@ -2301,170 +2301,83 @@ body.preview-mode .article-group { background-color: transparent; }
 
 
   // --- エクスポート (html2canvas) ---
-  
   async function exportCanvasToImage(format) {
-      document.getElementById('export-menu-overlay').style.display='none';
-      deselectAll();
-      document.body.classList.add('preview-mode');
-      // インク画像を最新色で反映させてから書き出し
-      const inkTasks = [];
-      groups.forEach(g => {
-          if (g.type === 'image' && g.colorMode === 'ink' && !g.imageInkSrc) {
-              inkTasks.push(convertImageToInk(g, false));
-          }
-      });
-      if (inkTasks.length > 0) {
-          await Promise.all(inkTasks);
-          renderGroups();
-      }
-      
-      const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
-      const gridPrevDisplay = gridLayer.style.display;
-      gridLayer.style.display = 'none'; // 書き出しは文字マスを必ず非表示
-      gridLayer.style.opacity = 0;
-      await ensureWebFontsLoaded();
-      await document.fonts.ready;
-      renderGroups();
-      requestAnimationFrame(() => renderGroups());
-      
-      const paperElement = document.querySelector('.paper');
-      
-      // 現在のView状態を保存
-      const originalTransform = canvasTransform.style.transform;
-      const originalLeft = paperElement.style.left;
-      const originalTop = paperElement.style.top;
-      const originalParent = paperElement.parentNode;
-      const originalNext = paperElement.nextSibling;
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      
-      // 書き出し用にリセット（変形などを維持しつつ、位置を原点へ）
-      window.scrollTo(0,0);
-      canvasTransform.style.transform = "scale(1)"; // ビューポートのズームを解除
-      paperElement.style.left = "0px";
-      paperElement.style.top = "0px";
-      paperElement.style.margin = "0";
-      
-      // 祖先のoverflowによるクリッピングを避けるため、用紙を一時的にボディ直下へ退避させる
-      const tempWrapper = document.createElement('div');
-      tempWrapper.style.position = 'absolute';
-      tempWrapper.style.top = '0';
-      tempWrapper.style.left = '0';
-      tempWrapper.style.overflow = 'visible';
-      tempWrapper.style.zIndex = '-1';
-      document.body.appendChild(tempWrapper);
-      tempWrapper.appendChild(paperElement);
-      document.body.style.overflow = 'visible';
-      document.documentElement.style.overflow = 'visible';
+    document.getElementById('export-menu-overlay').style.display = 'none';
+    deselectAll();
+    document.body.classList.add('preview-mode');
 
-      try {
-          // フォントの読み込みを待つ
-          if (document.fonts && document.fonts.ready) {
-              await document.fonts.ready;
-          }
+    // 1. 最新のインク色を画像に反映
+    const inkTasks = [];
+    groups.forEach(g => {
+        if (g.type === 'image' && g.colorMode === 'ink') {
+            inkTasks.push(convertImageToInk(g, false));
+        }
+    });
+    await Promise.all(inkTasks);
+    
+    // グリッドを隠して再描画
+    const gridWasVisible = document.getElementById('chk-grid')?.checked;
+    gridLayer.style.display = 'none';
+    gridLayer.style.opacity = 0;
+    renderGroups();
 
-          // 追加の待機時間（フォントが完全に適用されるまで）
-          await new Promise(resolve => setTimeout(resolve, 100));
+    // 2. フォントが完全にロードされているか最終確認
+    await document.fonts.ready;
 
-          // 見出しと題字をラスタライズ（Safari/iPad対応）
-          const headlinesAndHeaders = paperElement.querySelectorAll('.group[data-type="headline"], .group[data-type="header"]');
-          for (const group of headlinesAndHeaders) {
-              const svg = group.querySelector('svg');
-              if (!svg) continue;
+    const paperElement = document.querySelector('.paper');
+    
+    // レイアウト崩れ防止のため、一時的に絶対配置を解除して原点へ
+    const originalTransform = canvasTransform.style.transform;
+    const originalLeft = paperElement.style.left;
+    const originalTop = paperElement.style.top;
+    
+    window.scrollTo(0, 0);
+    canvasTransform.style.transform = "scale(1)";
+    paperElement.style.left = "0px";
+    paperElement.style.top = "0px";
 
-              try {
-                  // html2canvasで個別にSVG要素をレンダリング
-                  const tempContainer = document.createElement('div');
-                  tempContainer.style.position = 'absolute';
-                  tempContainer.style.left = '-9999px';
-                  tempContainer.style.top = '0';
-                  tempContainer.style.width = svg.getAttribute('width') + 'px';
-                  tempContainer.style.height = svg.getAttribute('height') + 'px';
-                  document.body.appendChild(tempContainer);
+    try {
+        // 3. html2canvas の実行
+        const canvas = await html2canvas(paperElement, {
+            scale: 3, // 高解像度（3倍程度が綺麗です）
+            useCORS: true,
+            logging: false,
+            backgroundColor: config.paperColor,
+            // 【重要】クローンしたドキュメントでフォントを待つ
+            onclone: async (clonedDoc) => {
+                const clonedPaper = clonedDoc.querySelector('.paper');
+                clonedPaper.style.transform = "none";
+                // クローン先でもフォントが利用可能になるまで待機
+                await clonedDoc.fonts.ready;
+            },
+            // writing-mode (縦書き) を維持するために必要
+            foreignObjectRendering: true 
+        });
 
-                  const svgClone = svg.cloneNode(true);
-                  tempContainer.appendChild(svgClone);
+        // 4. ダウンロード処理
+        const link = document.createElement('a');
+        const ext = format === 'png' ? 'png' : 'jpg';
+        link.href = canvas.toDataURL(`image/${format === 'png' ? 'png' : 'jpeg'}`, 0.95);
+        link.download = `shinbun_${Date.now()}.${ext}`;
+        link.click();
 
-                  // html2canvasでSVGをレンダリング
-                  const svgCanvas = await html2canvas(tempContainer, {
-                      scale: 2,
-                      useCORS: true,
-                      logging: false,
-                      backgroundColor: null,
-                      foreignObjectRendering: true,
-                      width: parseInt(svg.getAttribute('width')),
-                      height: parseInt(svg.getAttribute('height'))
-                  });
+    } catch (err) {
+        console.error("Export Error:", err);
+        alert("書き出し失敗: " + err.message);
+    } finally {
+        // 5. 状態を元に戻す
+        canvasTransform.style.transform = originalTransform;
+        paperElement.style.left = originalLeft;
+        paperElement.style.top = originalTop;
+        document.body.classList.remove('preview-mode');
+        if (gridWasVisible) {
+            gridLayer.style.display = '';
+            gridLayer.style.opacity = 1;
+        }
+        renderGroups();
+    }
+}
 
-                  document.body.removeChild(tempContainer);
-
-                  // Canvas を画像に変換
-                  const imgDataUrl = svgCanvas.toDataURL('image/png');
-
-                  // SVGをimg要素に置き換え
-                  const imgElement = document.createElement('img');
-                  imgElement.src = imgDataUrl;
-                  imgElement.style.position = 'absolute';
-                  imgElement.style.left = '0';
-                  imgElement.style.top = '0';
-                  imgElement.style.width = svg.getAttribute('width') + 'px';
-                  imgElement.style.height = svg.getAttribute('height') + 'px';
-                  imgElement.style.pointerEvents = 'none';
-
-                  svg.replaceWith(imgElement);
-              } catch (err) {
-                  console.error('Failed to rasterize headline/header:', err);
-                  // エラー時はSVGのまま継続
-              }
-          }
-
-          // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
-          // 高さ計算の不整合を防ぐため、windowHeight等を明示
-          const canvas = await html2canvas(paperElement, {
-              scale: 2, // 高解像度
-              useCORS: true,
-              logging: false,
-              backgroundColor: null, // 透過PNG対応
-              scrollX: 0, scrollY: 0,
-              x: 0, y: 0,
-              width: paperElement.offsetWidth,
-              height: paperElement.offsetHeight, // ここを要素の高さに合わせる
-              windowWidth: paperElement.scrollWidth,
-              windowHeight: paperElement.scrollHeight,
-              foreignObjectRendering: true // writing-mode対応のためtrueを使用
-          });
-          
-          const link = document.createElement('a');
-          if (format === 'png') {
-              link.href = canvas.toDataURL('image/png');
-              link.download = 'shinbun.png';
-          } else {
-              link.href = canvas.toDataURL('image/jpeg', 0.9);
-              link.download = 'shinbun.jpg';
-          }
-          link.click();
-          
-      } catch (err) {
-          alert("書き出しに失敗しました: " + err);
-          console.error(err);
-      } finally {
-          // 用紙を元の位置に戻す
-          if (tempWrapper && tempWrapper.parentNode) {
-              originalParent.insertBefore(paperElement, originalNext);
-              tempWrapper.remove();
-          }
-          document.body.style.overflow = originalBodyOverflow;
-          document.documentElement.style.overflow = originalHtmlOverflow;
-          // 状態復元
-          document.body.classList.remove('preview-mode');
-          canvasTransform.style.transform = originalTransform;
-          paperElement.style.left = originalLeft;
-          paperElement.style.top = originalTop;
-          gridLayer.style.display = gridPrevDisplay;
-          gridLayer.style.opacity = gridWasVisible ? 1 : 0;
-          renderGroups();
-      }
-  }
 
   // 終了時確認 (未保存の場合)
   window.onbeforeunload = function(e) {
