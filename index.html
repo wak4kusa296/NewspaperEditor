@@ -620,11 +620,26 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   .resize-handle {
-    position: absolute; bottom: -6px; left: -6px;
-    width: 10px; height: 10px; background-color: #fff; border: 1px solid #2196f3;
-    cursor: nesw-resize; z-index: 60; display: none;
-    border-radius: 50%;
+    position: absolute;
+    width: 20px; height: 20px;
+    z-index: 60;
+    display: none;
+    pointer-events: auto;
   }
+  .resize-handle::before {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    background-color: #fff;
+    border: 2px solid #2196f3;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .resize-handle-tl { top: -10px; left: -10px; cursor: nwse-resize; }
+  .resize-handle-tr { top: -10px; right: -10px; cursor: nesw-resize; }
+  .resize-handle-bl { bottom: -10px; left: -10px; cursor: nesw-resize; }
+  .resize-handle-br { bottom: -10px; right: -10px; cursor: nwse-resize; }
   .article-group.selected .resize-handle { display: block; }
   body.preview-mode .resize-handle { display: none !important; }
 
@@ -1621,8 +1636,9 @@ body.preview-mode .article-group { background-color: transparent; }
   let lastTapTime = 0, lastTapPos = { x: 0, y: 0 }, lastTapTargetId = null;
   let opMode = 'none';
   let startX, startY, startViewX, startViewY, dragStartX, dragStartY;
-  let initialElemX, initialElemY, anchorRight, anchorTop;
+  let initialElemX, initialElemY, anchorRight, anchorTop, anchorLeft, anchorBottom;
   let targetId = null, ghost = null, selectedId = null;
+  let resizeCorner = 'br'; // リサイズ操作のコーナー (tl, tr, bl, br)
   let linkingSourceId = null, linkingStartX = 0, linkingStartY = 0;
   let linkingSourceType = null;
   let anchorSnapX = 0, anchorSnapY = 0;
@@ -3034,7 +3050,24 @@ function updateFreeTextAttr() {
         const groupEl = e.target.closest('.article-group');
         targetId = groupEl.dataset.id;
         const g = groups.find(item => item.id === targetId);
-        anchorRight = g.x + g.w; anchorTop = g.y;
+
+        // どのコーナーから操作しているかを記録
+        resizeCorner = e.target.dataset.corner || 'br'; // デフォルトは右下
+
+        // コーナーに応じてアンカーポイントを設定
+        if (resizeCorner === 'tl') {
+            anchorRight = g.x + g.w;
+            anchorBottom = g.y + (g.h || ((g.danCount * physicalHDan) + ((g.danCount - 1) * physicalHGap)));
+        } else if (resizeCorner === 'tr') {
+            anchorLeft = g.x;
+            anchorBottom = g.y + (g.h || ((g.danCount * physicalHDan) + ((g.danCount - 1) * physicalHGap)));
+        } else if (resizeCorner === 'bl') {
+            anchorRight = g.x + g.w;
+            anchorTop = g.y;
+        } else { // br
+            anchorRight = g.x + g.w;
+            anchorTop = g.y;
+        }
         return;
     }
 
@@ -3227,44 +3260,104 @@ function updateFreeTextAttr() {
     } else if (opMode === 'resize') {
         selectionMovedSinceDown = true;
         const g = groups.find(item => item.id === targetId);
-        
+
         // 記事のフリーレイアウト対応
         let isFree = (g.type === 'article' && g.freeLayout);
         if (g.type === 'free-text') {
-            let newW = anchorRight - hPos.x;
-            let newH = hPos.y - anchorTop;
+            // コーナーに応じて計算
+            let newW, newH, newX, newY;
+
+            if (resizeCorner === 'tl') {
+                newW = anchorRight - hPos.x;
+                newH = anchorBottom - hPos.y;
+                newX = hPos.x;
+                newY = hPos.y;
+            } else if (resizeCorner === 'tr') {
+                newW = hPos.x - anchorLeft;
+                newH = anchorBottom - hPos.y;
+                newX = anchorLeft;
+                newY = hPos.y;
+            } else if (resizeCorner === 'bl') {
+                newW = anchorRight - hPos.x;
+                newH = hPos.y - anchorTop;
+                newX = hPos.x;
+                newY = anchorTop;
+            } else { // br
+                newW = hPos.x - (anchorRight - g.w);
+                newH = hPos.y - anchorTop;
+                newX = anchorRight - newW;
+                newY = anchorTop;
+            }
+
             newW = Math.max(10, newW);
             newH = Math.max(10, newH);
-            let newX = anchorRight - newW;
+
             const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
             if (el) {
                 el.style.left = Math.round(newX) + 'px';
-                el.style.top = Math.round(anchorTop) + 'px';
+                el.style.top = Math.round(newY) + 'px';
                 el.style.width = Math.round(newW) + 'px';
                 el.style.height = Math.round(newH) + 'px';
             }
         } else {
             let unitH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (config.baseFontSize * SCALE_Y) : physicalHUnit;
-            
-            let rawH = hPos.y - anchorTop;
-            let minH = unitH;
-            if (rawH < minH) rawH = minH; 
-            
-            let dc = Math.ceil(rawH / unitH); if (dc < 1) dc = 1;
-            
-            let snH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
 
-            let distW = anchorRight - hPos.x;
-            let minW = config.baseFontSize;
-            if (distW < minW) distW = minW; 
-            let cols = Math.ceil(distW / linePitch); if (cols < 1) cols = 1;
-            let snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
-            let newX = anchorRight - snW;
-            
+            let rawH, rawW, newX, newY;
+
+            // コーナーに応じて計算
+            let snW, snH;
+
+            if (resizeCorner === 'br' || resizeCorner === 'tr') {
+                // 右コーナー: 左端固定、右に伸ばす
+                let rawW = hPos.x - anchorLeft;
+                if (rawW < config.baseFontSize) rawW = config.baseFontSize;
+                let cols = Math.ceil(rawW / linePitch); if (cols < 1) cols = 1;
+                snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
+            } else {
+                // 左コーナー: 右端固定、左に伸ばす
+                let rawW = anchorRight - hPos.x;
+                if (rawW < config.baseFontSize) rawW = config.baseFontSize;
+                let cols = Math.ceil(rawW / linePitch); if (cols < 1) cols = 1;
+                snW = (cols * config.baseFontSize) + ((cols - 1) * config.lineGap);
+            }
+
+            if (resizeCorner === 'br' || resizeCorner === 'bl') {
+                // 下コーナー: 上端固定、下に伸ばす
+                let rawH = hPos.y - anchorTop;
+                if (rawH < unitH) rawH = unitH;
+                let dc = Math.ceil(rawH / unitH); if (dc < 1) dc = 1;
+                snH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
+            } else {
+                // 上コーナー: 下端固定、上に伸ばす
+                let rawH = anchorBottom - hPos.y;
+                if (rawH < unitH) rawH = unitH;
+                let dc = Math.ceil(rawH / unitH); if (dc < 1) dc = 1;
+                snH = (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || isFree) ? (dc * unitH) : ((dc * physicalHDan) + ((dc - 1) * physicalHGap));
+            }
+
+            // コーナーに応じてX位置とY位置を計算
+            if (resizeCorner === 'tl') {
+                // 左上: 右下固定
+                newX = anchorRight - snW;
+                newY = anchorBottom - snH;
+            } else if (resizeCorner === 'tr') {
+                // 右上: 左下固定
+                newX = anchorLeft;
+                newY = anchorBottom - snH;
+            } else if (resizeCorner === 'bl') {
+                // 左下: 右上固定
+                newX = anchorRight - snW;
+                newY = anchorTop;
+            } else { // br
+                // 右下: 左上固定
+                newX = anchorLeft;
+                newY = anchorTop;
+            }
+
             const el = document.querySelector(`.article-group[data-id="${targetId}"]`);
             if(el) {
-                el.style.left = newX + 'px'; el.style.top = anchorTop + 'px';
-                el.style.width = snW + 'px'; el.style.height = snH + 'px';
+                el.style.left = Math.round(newX) + 'px'; el.style.top = Math.round(newY) + 'px';
+                el.style.width = Math.round(snW) + 'px'; el.style.height = Math.round(snH) + 'px';
             }
         }
     }
@@ -3320,12 +3413,14 @@ function updateFreeTextAttr() {
             if (el) {
                 const g = groups.find(item => item.id === targetId);
                 if (opMode === 'move') { g.x = parseFloat(el.style.left); g.y = parseFloat(el.style.top); }
-                else { 
-                    g.x = parseFloat(el.style.left); g.w = parseFloat(el.style.width);
+                else {
+                    g.x = parseFloat(el.style.left);
+                    g.y = parseFloat(el.style.top);
+                    g.w = parseFloat(el.style.width);
                     let hVal = parseFloat(el.style.height);
-                    
+
                     if (g.type === 'correction' || g.type === 'image' || g.type === 'headline' || g.type === 'header' || g.type === 'free-text' || (g.type === 'article' && g.freeLayout)) {
-                        g.h = hVal; 
+                        g.h = hVal;
                     } else {
                         g.danCount = Math.max(1, Math.round((hVal + physicalHGap) / physicalHUnit));
                     }
@@ -3855,7 +3950,27 @@ function updateFreeTextAttr() {
       el.style.height = totalH + 'px';
       if(selectedId === g.id) el.classList.add('selected');
 
-      const handle = document.createElement('div'); handle.className = 'resize-handle'; el.appendChild(handle);
+      // リサイズハンドルを四隅に配置
+      const handleTL = document.createElement('div');
+      handleTL.className = 'resize-handle resize-handle-tl';
+      handleTL.dataset.corner = 'tl';
+      el.appendChild(handleTL);
+
+      const handleTR = document.createElement('div');
+      handleTR.className = 'resize-handle resize-handle-tr';
+      handleTR.dataset.corner = 'tr';
+      el.appendChild(handleTR);
+
+      const handleBL = document.createElement('div');
+      handleBL.className = 'resize-handle resize-handle-bl';
+      handleBL.dataset.corner = 'bl';
+      el.appendChild(handleBL);
+
+      const handleBR = document.createElement('div');
+      handleBR.className = 'resize-handle resize-handle-br';
+      handleBR.dataset.corner = 'br';
+      el.appendChild(handleBR);
+
       const tr = `translate(${g.nudgeX || 0}px, ${g.nudgeY || 0}px)`;
 
       // コンテンツ描画分岐
@@ -3893,18 +4008,28 @@ function updateFreeTextAttr() {
              let scaleFactor = (actualLen > 0) ? (longSide / actualLen) : 1.0;
              let baseTransform = isVertical ? `scale(1, ${scaleFactor})` : `scale(${scaleFactor}, 1)`;
              
-             // Safari補正: サブピクセルレンダリングのずれを防ぐため整数化
+             // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
              const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-             const safariOffset = isSafari ? 0.5 : 0; // Safariで0.5pxオフセット補正
 
              if (isVertical) {
-                 content.style.right = Math.round(padShort - safariOffset) + 'px';
-                 content.style.top = Math.round(padLong - safariOffset) + 'px';
+                 content.style.right = padShort + 'px';
+                 content.style.top = padLong + 'px';
+                 content.style.left = 'auto';
              } else {
-                 content.style.left = Math.round(padLong - safariOffset) + 'px';
-                 content.style.top = Math.round(padShort - safariOffset) + 'px';
+                 content.style.left = padLong + 'px';
+                 content.style.top = padShort + 'px';
+                 content.style.right = 'auto';
              }
+
+             // Safariでのレンダリング補正を追加
+             if (isSafari) {
+                 content.style.webkitTransformOrigin = isVertical ? 'top right' : 'top left';
+                 content.style.backfaceVisibility = 'hidden';
+                 content.style.webkitBackfaceVisibility = 'hidden';
+             }
+
              content.style.transform = `${baseTransform} ${tr}`;
+             content.style.webkitTransform = `${baseTransform} ${tr}`;
           } else { content.style.display = 'none'; }
           wrapper.appendChild(content); el.appendChild(wrapper);
 
@@ -3986,15 +4111,24 @@ function updateFreeTextAttr() {
           const measuredLong = isVertical ? headerMeasureBox.offsetHeight : headerMeasureBox.offsetWidth;
           const scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
 
-          // Safari補正: サブピクセルレンダリングのずれを防ぐ
+          // Safari補正: writing-modeとtransformの組み合わせでのずれを補正
           const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-          const safariOffset = isSafari ? 0.5 : 0;
 
-          const translateX = (g.titleNudgeX || 0) - safariOffset;
-          const translateY = (g.titleNudgeY || 0) - safariOffset;
-          titleText.style.transform = isVertical
+          const translateX = g.titleNudgeX || 0;
+          const translateY = g.titleNudgeY || 0;
+
+          // Safariでのレンダリング補正を追加
+          if (isSafari) {
+              titleText.style.webkitTransformOrigin = 'top left';
+              titleText.style.backfaceVisibility = 'hidden';
+              titleText.style.webkitBackfaceVisibility = 'hidden';
+          }
+
+          const finalTransform = isVertical
               ? `translate(${translateX}px, ${translateY}px) scale(1, ${scale})`
               : `translate(${translateX}px, ${translateY}px) scale(${scale}, 1)`;
+          titleText.style.transform = finalTransform;
+          titleText.style.webkitTransform = finalTransform;
 
       } else if (g.type === 'correction') {
           const box = document.createElement('div'); box.className = 'correction-box';
