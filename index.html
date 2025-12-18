@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -766,12 +766,12 @@ body.preview-mode .article-group { background-color: transparent; }
   }
 
   .header-title-transform {
-      width: 100%;
-      height: 100%;
-      position: relative;
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      pointer-events: none;
   }
 
   /* --- エディタ・モーダル関連 --- */
@@ -4108,18 +4108,10 @@ function updateFreeTextAttr() {
           const availW = Math.max(10, g.w - (borderSpace * 2) - (padH * 2));
           const availH = Math.max(10, totalH - (borderSpace * 2) - (padV * 2));
           const isVertical = availH > availW;
-          const transformOrigin = isVertical ? 'top right' : 'top left';
+          const transformOrigin = 'center center';
 
           titleText.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
           titleText.style.lineHeight = isVertical ? '1.0' : '0.85';
-
-          if (isVertical) {
-              titleTextWrapper.style.justifyContent = 'flex-end';
-              titleTextWrapper.style.alignItems = 'flex-start';
-          } else {
-              titleTextWrapper.style.justifyContent = 'flex-start';
-              titleTextWrapper.style.alignItems = 'flex-start';
-          }
 
           const shortSide = isVertical ? availW : availH;
           const longSide = isVertical ? availH : availW;
