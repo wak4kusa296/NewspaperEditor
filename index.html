@@ -2113,12 +2113,101 @@ body.preview-mode .article-group { background-color: transparent; }
 
 
   // --- エクスポート (html2canvas) ---
-  
+
+// ▼▼▼ ここからコピーして、既存の exportCanvasToImage 関数と置き換えてください ▼▼▼
+
+// 【新規追加】Google Fontsを強制的にBase64化して埋め込む関数
+async function embedGoogleFonts() {
+    console.log("フォント埋め込み処理を開始します...");
+    const links = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    if (links.length === 0) return;
+
+    // 既に埋め込み済みなら処理しない（重複防止）
+    if (document.getElementById('embedded-google-fonts')) {
+        console.log("既にフォントは埋め込まれています。");
+        return;
+    }
+
+    try {
+        const fetchPromises = Array.from(links).map(async (link) => {
+            try {
+                // CSSを取得
+                const cssRes = await fetch(link.href);
+                let cssText = await cssRes.text();
+
+                // CSS内のフォントファイルURL(url(...))を抽出
+                const urlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+                let match;
+                const fontDownloads = [];
+
+                // CSS内の全URLを走査
+                while ((match = urlRegex.exec(cssText)) !== null) {
+                    const originalUrl = match[1].replace(/['"]/g, '');
+                    
+                    // フォントファイルをダウンロードしてBase64化するPromiseを作成
+                    const downloadPromise = fetch(originalUrl)
+                        .then(res => res.blob())
+                        .then(blob => new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve({ originalUrl, base64: reader.result });
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        }))
+                        .catch(err => {
+                            console.warn("フォントダウンロード失敗:", originalUrl, err);
+                            return null;
+                        });
+                    
+                    fontDownloads.push(downloadPromise);
+                }
+
+                // 全フォントの変換を待機
+                const convertedFonts = await Promise.all(fontDownloads);
+
+                // CSSテキスト内のURLをBase64に置換
+                convertedFonts.forEach(item => {
+                    if (item) {
+                        cssText = cssText.split(item.originalUrl).join(item.base64);
+                    }
+                });
+
+                return cssText;
+            } catch (e) {
+                console.warn("CSS取得エラー:", e);
+                return "";
+            }
+        });
+
+        // 全CSSの処理完了を待機
+        const allCss = await Promise.all(fetchPromises);
+        
+        // スタイルタグとしてheadに追加
+        const style = document.createElement('style');
+        style.id = 'embedded-google-fonts';
+        style.textContent = allCss.join('\n');
+        document.head.appendChild(style);
+        console.log("フォント埋め込み完了！");
+
+    } catch (e) {
+        console.error("フォント埋め込み処理全体でエラー:", e);
+        // ローカル環境(file://)だとここでエラーになることが多いです
+        if(window.location.protocol === 'file:') {
+            alert("エラー: この機能はHTMLファイルをダブルクリックで開いた状態では動きません。\nVS Codeの「Live Server」機能などを使って、http:// から始まるURLで開いてください。");
+        }
+    }
+}
+
+  // 【書き換え】書き出し実行関数
   async function exportCanvasToImage(format) {
       document.getElementById('export-menu-overlay').style.display='none';
+      
+      // ★追加: フォント埋め込みを実行し、完了を待つ
+      await embedGoogleFonts();
+
       deselectAll();
       document.body.classList.add('preview-mode');
-      // インク画像を最新色で反映させてから書き出し
+
+      // インク画像の更新待ち
       const inkTasks = [];
       groups.forEach(g => {
           if (g.type === 'image' && g.colorMode === 'ink' && !g.imageInkSrc) {
@@ -2132,12 +2221,14 @@ body.preview-mode .article-group { background-color: transparent; }
       
       const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
       const gridPrevDisplay = gridLayer.style.display;
-      gridLayer.style.display = 'none'; // 書き出しは文字マスを必ず非表示
+      gridLayer.style.display = 'none';
       gridLayer.style.opacity = 0;
-      await ensureWebFontsLoaded();
+
+      // フォント適用待ち（念のため）
       await document.fonts.ready;
+      await new Promise(r => setTimeout(r, 500)); // 0.5秒待つ
+
       renderGroups();
-      requestAnimationFrame(() => renderGroups());
       
       const paperElement = document.querySelector('.paper');
       
@@ -2152,7 +2243,7 @@ body.preview-mode .article-group { background-color: transparent; }
       
       // 書き出し用にリセット（変形などを維持しつつ、位置を原点へ）
       window.scrollTo(0,0);
-      canvasTransform.style.transform = "scale(1)"; // ビューポートのズームを解除
+      canvasTransform.style.transform = "scale(1)";
       paperElement.style.left = "0px";
       paperElement.style.top = "0px";
       paperElement.style.margin = "0";
@@ -2170,80 +2261,20 @@ body.preview-mode .article-group { background-color: transparent; }
       document.documentElement.style.overflow = 'visible';
 
       try {
-          // フォントの読み込みを待つ
-          if (document.fonts && document.fonts.ready) {
-              await document.fonts.ready;
-          }
-
-          // 追加の待機時間（フォントが完全に適用されるまで）
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // 見出しと題字をラスタライズ（Safari/iPad対応）
-          const headlinesAndHeaders = paperElement.querySelectorAll('.group[data-type="headline"], .group[data-type="header"]');
-          for (const group of headlinesAndHeaders) {
-              const svg = group.querySelector('svg');
-              if (!svg) continue;
-
-              try {
-                  // html2canvasで個別にSVG要素をレンダリング
-                  const tempContainer = document.createElement('div');
-                  tempContainer.style.position = 'absolute';
-                  tempContainer.style.left = '-9999px';
-                  tempContainer.style.top = '0';
-                  tempContainer.style.width = svg.getAttribute('width') + 'px';
-                  tempContainer.style.height = svg.getAttribute('height') + 'px';
-                  document.body.appendChild(tempContainer);
-
-                  const svgClone = svg.cloneNode(true);
-                  tempContainer.appendChild(svgClone);
-
-                  // html2canvasでSVGをレンダリング
-                  const svgCanvas = await html2canvas(tempContainer, {
-                      scale: 2,
-                      useCORS: true,
-                      logging: false,
-                      backgroundColor: null,
-                      foreignObjectRendering: true,
-                      width: parseInt(svg.getAttribute('width')),
-                      height: parseInt(svg.getAttribute('height'))
-                  });
-
-                  document.body.removeChild(tempContainer);
-
-                  // Canvas を画像に変換
-                  const imgDataUrl = svgCanvas.toDataURL('image/png');
-
-                  // SVGをimg要素に置き換え
-                  const imgElement = document.createElement('img');
-                  imgElement.src = imgDataUrl;
-                  imgElement.style.position = 'absolute';
-                  imgElement.style.left = '0';
-                  imgElement.style.top = '0';
-                  imgElement.style.width = svg.getAttribute('width') + 'px';
-                  imgElement.style.height = svg.getAttribute('height') + 'px';
-                  imgElement.style.pointerEvents = 'none';
-
-                  svg.replaceWith(imgElement);
-              } catch (err) {
-                  console.error('Failed to rasterize headline/header:', err);
-                  // エラー時はSVGのまま継続
-              }
-          }
-
-          // html2canvas実行 (useCORSで画像読み込み対応、allowTaintは避ける)
-          // 高さ計算の不整合を防ぐため、windowHeight等を明示
+          // html2canvas実行
           const canvas = await html2canvas(paperElement, {
               scale: 2, // 高解像度
               useCORS: true,
-              logging: false,
-              backgroundColor: null, // 透過PNG対応
+              allowTaint: true,
+              logging: true,
+              backgroundColor: null,
               scrollX: 0, scrollY: 0,
               x: 0, y: 0,
               width: paperElement.offsetWidth,
-              height: paperElement.offsetHeight, // ここを要素の高さに合わせる
+              height: paperElement.offsetHeight,
               windowWidth: paperElement.scrollWidth,
               windowHeight: paperElement.scrollHeight,
-              foreignObjectRendering: true // writing-mode対応のためtrueを使用
+              foreignObjectRendering: true // 縦書き対応のため必須
           });
           
           const link = document.createElement('a');
@@ -2277,6 +2308,7 @@ body.preview-mode .article-group { background-color: transparent; }
           renderGroups();
       }
   }
+  // ▲▲▲ コピーここまで ▲▲▲
 
   // 終了時確認 (未保存の場合)
   window.onbeforeunload = function(e) {
