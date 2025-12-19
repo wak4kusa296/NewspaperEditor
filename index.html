@@ -2247,11 +2247,23 @@ function buildPaperSVG(fontCSS) {
   svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#000" stroke-width="4"/>\n`;
 
   // ✅ デバッグ文字
-  svg += `<text x="40" y="60"
-  font-size="48"
-  fill="${textColor}"
-  font-family="'BIZ UDMincho', serif"
-  font-weight="400">テ</text>\n`;
+  svg += `<text x="40" y="80"
+    font-size="64"
+    fill="${textColor}"
+    font-family="'Yuji Syuku', serif"
+    font-weight="400">筆</text>\n`;
+
+  svg += `<text x="40" y="160"
+    font-size="64"
+    fill="${textColor}"
+    font-family="'Yuji Syuku', serif"
+    font-weight="400">時</text>\n`;
+
+  svg += `<text x="40" y="240"
+    font-size="64"
+    fill="${textColor}"
+    font-family="'Yuji Syuku', serif"
+    font-weight="400">宿</text>\n`;
 
 
   // ここから先は groups を描く（まだ未実装なら、今はこのままでOK）
