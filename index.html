@@ -1539,7 +1539,7 @@ body.preview-mode .article-group { background-color: transparent; }
   // --- フォント設定 ---
   const fontOptions = [
     { label: "--- 明朝体 (Mincho) ---", options: [
-      { val: '"Biz UDMincho", serif', label: "BIZ UD明朝 (標準)" },
+      { val: '"BIZ UDMincho", serif', label: "BIZ UD明朝 (標準)" },
       { val: '"Noto Serif JP", serif', label: "Noto Serif JP" }
     ]},
     { label: "--- ゴシック体 (Gothic) ---", options: [
@@ -2198,9 +2198,7 @@ function renderTokensVerticalToSVG(tokens, boxW, boxH_logical, fontSize, lineGap
   return out;
 }
 
-// SVG組み立て（paper全体）
 function buildPaperSVG() {
-
   const paperEl = document.querySelector(".paper");
   const W = Math.round(paperEl.offsetWidth);
   const H = Math.round(paperEl.offsetHeight);
@@ -2208,48 +2206,38 @@ function buildPaperSVG() {
   const embeddedStyle = document.getElementById("embedded-google-fonts");
   const fontCSS = embeddedStyle ? embeddedStyle.textContent : "";
 
-  // 紙面背景（あなたの config.paperColor を使う）
   const paperColor = config.paperColor || "#ffffff";
   const textColor  = config.textColor  || "#111111";
 
   let svg = "";
-  // 背景
-  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
-
+  svg += `<?xml version="1.0" encoding="UTF-8"?>\n`;
   svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
+
+  // 先に defs（フォント）を入れる
   svg += `<defs>\n`;
-  // Google Fonts Base64化した @font-face をSVG内に埋める（重要）
   svg += `<style><![CDATA[\n${fontCSS}\n]]></style>\n`;
   svg += `</defs>\n`;
 
+  // 背景は svg の中に入れる
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
 
-  // 重要: 紙面は縦方向に SCALE_Y が入る設計なので、
-  // 文字配置は「論理座標」で組んで、グループ単位で scale(1, SCALE_Y) をかけて見た目を合わせる。
-  // SCALE_Y はあなたの定数（const SCALE_Y=0.85）を使用 :contentReference[oaicite:3]{index=3}
-
+  // （以下は今のまま、groups を回して text を足していく）
   for (const g of groups) {
     const gx = Math.round((g.x || 0) + (g.nudgeX || 0));
     const gy = Math.round((g.y || 0) + (g.nudgeY || 0));
 
-    // 画像・線などは必要なら後で拡張（まずは文章の勝利を優先）
     if (g.type === "article") {
       const fontFamily = g.fontFamily || config.fontFamily;
       const fontWeight = g.fontWeight || config.fontWeight;
 
       const loopCount = (g.freeLayout) ? 1 : (g.danCount || 1);
-
-      // 各段の物理高さは physicalHDan（= baseHDan * SCALE_Y） :contentReference[oaicite:4]{index=4}
-      // ロジカル高さに戻すため /SCALE_Y
       const segH_physical = (g.freeLayout && g.h) ? g.h : physicalHDan;
       const segH_logical  = segH_physical / SCALE_Y;
 
       for (let i = 0; i < loopCount; i++) {
         const segY = gy + Math.round(i * (physicalHDan + physicalHGap));
-
-        // segment単位で縦スケール（yだけ）を掛ける
         svg += `<g transform="translate(${gx},${segY}) scale(1,${SCALE_Y})">\n`;
 
-        // displayText[i] にHTMLが入ってる（<br>, <span class="tcy">） :contentReference[oaicite:5]{index=5}
         const html = (g.displayText && g.displayText[i]) ? g.displayText[i] : "";
         const tokens = htmlToTokens(html);
 
@@ -2268,7 +2256,6 @@ function buildPaperSVG() {
       }
     }
 
-    // free-text も縦書きなら同じ方式で流せる（最低限対応）
     if (g.type === "free-text") {
       const fontFamily = g.fontFamily || config.fontFamily;
       const fontWeight = g.fontWeight || config.fontWeight;
@@ -2280,16 +2267,7 @@ function buildPaperSVG() {
 
       svg += `<g transform="translate(${gx},${gy}) scale(1,${SCALE_Y})">\n`;
       const tokens = htmlToTokens(String(g.text || "").replace(/\n/g, "<br>"));
-      svg += renderTokensVerticalToSVG(
-        tokens,
-        Math.round(g.w || 0),
-        h_logical,
-        fontSize,
-        lineGap,
-        fontFamily,
-        fontWeight,
-        textColor
-      );
+      svg += renderTokensVerticalToSVG(tokens, Math.round(g.w || 0), h_logical, fontSize, lineGap, fontFamily, fontWeight, textColor);
       svg += `</g>\n`;
     }
   }
@@ -2297,6 +2275,7 @@ function buildPaperSVG() {
   svg += `</svg>`;
   return { svg, width: W, height: H };
 }
+
 
 // SVG -> PNG/JPG でダウンロード
 async function exportViaPureSVG(format) {
