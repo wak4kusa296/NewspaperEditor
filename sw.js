@@ -25,12 +25,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+
+  const requestUrl = new URL(request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    // Don't intercept cross-origin requests to avoid opaque responses
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       caches.match('./index.html').then((cached) => cached || fetch(request))
     );
     return;
   }
+
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request).then((resp) => {
       const clone = resp.clone();
