@@ -2218,10 +2218,7 @@ function buildPaperSVG() {
   svg += `<style><![CDATA[\n${fontCSS}\n]]></style>\n`;
   svg += `</defs>\n`;
 
-  // 背景は svg の中に入れる
-  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
-
-  // （以下は今のまま、groups を回して text を足していく）
+    // （以下は今のまま、groups を回して text を足していく）
   for (const g of groups) {
     const gx = Math.round((g.x || 0) + (g.nudgeX || 0));
     const gy = Math.round((g.y || 0) + (g.nudgeY || 0));
