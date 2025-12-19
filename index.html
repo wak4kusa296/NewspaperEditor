@@ -14,11 +14,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Google Fonts 一括読み込み -->
-<link href="https://fonts.googleapis.com/css2?family=Biz+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Biz+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=swap" rel="stylesheet">
 <!-- 画像生成用ライブラリ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- PDF生成用ライブラリ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
   :root {
@@ -911,87 +909,6 @@ body.preview-mode .article-group { background-color: transparent; }
   }
   #text-measure-box, #header-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
 
-  /* 印刷用スタイル */
-  @media print {
-    /* ページ設定 */
-    @page {
-      size: A3 portrait;
-      margin: 0;
-    }
-
-    /* body全体を一度非表示にしてから必要な要素だけ表示 */
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: visible;
-      background: white;
-      visibility: hidden;
-    }
-
-    /* UI要素を完全に非表示 */
-    #toolbar,
-    #ui-panel,
-    #launch-screen,
-    .menu-overlay,
-    #export-menu-overlay,
-    #grid-layer,
-    .resize-handle {
-      display: none !important;
-      visibility: hidden !important;
-    }
-
-    /* 新聞用紙とその親要素を表示 */
-    #viewport,
-    #canvas-transform,
-    .paper,
-    .paper * {
-      visibility: visible !important;
-    }
-
-    #viewport {
-      overflow: visible !important;
-      width: 297mm !important;
-      height: 420mm !important;
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-    }
-
-    #canvas-transform {
-      transform: none !important;
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 297mm !important;
-      height: 420mm !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow: visible !important;
-    }
-
-    .paper {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      page-break-after: avoid;
-      width: 297mm !important;
-      height: 420mm !important;
-    }
-
-    .article-group.selected {
-      outline: none !important;
-      border: none !important;
-    }
-
-    /* 背景色を確実に印刷 */
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  }
-
 </style>
   
 </head>
@@ -1103,7 +1020,7 @@ body.preview-mode .article-group { background-color: transparent; }
         </div>
         <div class="tool-label">開く</div>
       </div>
-      <div class="tool-btn" onclick="exportCanvasToImage('pdf')" title="PDF書き出し">
+      <div class="tool-btn" onclick="openExportMenu()" title="書き出し">
         <div class="tool-icon">
           <svg viewBox="0 0 24 24" class="duotone-icon"><path d="M19,9h-4V3H9v6H5l7,7ZM5,18v2h14v-2Z" fill="currentColor"/></svg>
         </div>
@@ -2290,15 +2207,15 @@ async function embedGoogleFonts() {
 }
 // ▲▲▲ 完成版ここまで ▲▲▲
 
-// 書き出し実行関数（PDF方式）
+// 書き出し実行関数（修正版）
 async function exportCanvasToImage(format) {
-    // フォントの読み込みを待つ
-    if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-    }
+    document.getElementById('export-menu-overlay').style.display='none';
+    
+    // 1. まずフォントをBase64化して準備（ここまでは成功していました）
+    await embedGoogleFonts();
 
-    // 追加の待機時間（フォントが完全に適用されるまで）
-    await new Promise(resolve => setTimeout(resolve, 200));
+    deselectAll();
+    document.body.classList.add('preview-mode');
 
     // インク画像の更新待ち
     const inkTasks = [];
@@ -2311,37 +2228,113 @@ async function exportCanvasToImage(format) {
         await Promise.all(inkTasks);
         renderGroups();
     }
-
-    // 印刷前の準備
-    deselectAll();
-    document.body.classList.add('preview-mode');
-
+    
     // グリッドを消す
     const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
     const gridPrevDisplay = gridLayer.style.display;
     gridLayer.style.display = 'none';
     gridLayer.style.opacity = 0;
 
-    renderGroups();
+    // 念のため少し待つ
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 1000));
 
-    // 少し待機してレンダリングを確実にする
-    await new Promise(r => setTimeout(r, 300));
+    renderGroups();
+    
+    const paperElement = document.querySelector('.paper');
+    
+    // 表示リセット用
+    const originalTransform = canvasTransform.style.transform;
+    const originalLeft = paperElement.style.left;
+    const originalTop = paperElement.style.top;
+    const originalParent = paperElement.parentNode;
+    const originalNext = paperElement.nextSibling;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    
+    // 位置リセット
+    window.scrollTo(0,0);
+    canvasTransform.style.transform = "scale(1)";
+    paperElement.style.left = "0px";
+    paperElement.style.top = "0px";
+    paperElement.style.margin = "0";
+    
+    // 一時配置
+    const tempWrapper = document.createElement('div');
+    tempWrapper.style.position = 'absolute';
+    tempWrapper.style.top = '0';
+    tempWrapper.style.left = '0';
+    tempWrapper.style.overflow = 'visible';
+    tempWrapper.style.zIndex = '-1';
+    document.body.appendChild(tempWrapper);
+    tempWrapper.appendChild(paperElement);
+    document.body.style.overflow = 'visible';
+    document.documentElement.style.overflow = 'visible';
 
     try {
-        // 印刷ダイアログを開く
-        window.print();
+        // html2canvas実行
+        const canvas = await html2canvas(paperElement, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: true,
+            backgroundColor: null,
+            scrollX: 0, scrollY: 0,
+            x: 0, y: 0,
+            width: paperElement.offsetWidth,
+            height: paperElement.offsetHeight,
+            windowWidth: paperElement.scrollWidth,
+            windowHeight: paperElement.scrollHeight,
+            foreignObjectRendering: true, // 縦書きに必須
+
+            // ▼▼▼ ここが今回の修正ポイント（重要） ▼▼▼
+            // 撮影用の「クローン」が作られた瞬間に、フォント情報を注入する
+            onclone: function(clonedDoc) {
+                console.log("撮影用クローンにフォントを注入します...");
+                const originalStyle = document.getElementById('embedded-google-fonts');
+                
+                // 準備したBase64フォントをクローン側にもコピー
+                if (originalStyle) {
+                    const newStyle = clonedDoc.createElement('style');
+                    newStyle.textContent = originalStyle.textContent;
+                    clonedDoc.head.appendChild(newStyle);
+                    console.log("成功：クローンへの注入完了");
+                }
+                
+                // プレビューモードも確実に引き継ぐ
+                clonedDoc.body.classList.add('preview-mode');
+            }
+            // ▲▲▲ ここまで ▲▲▲
+        });
+        
+        const link = document.createElement('a');
+        if (format === 'png') {
+            link.href = canvas.toDataURL('image/png');
+            link.download = 'shinbun.png';
+        } else {
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.download = 'shinbun.jpg';
+        }
+        link.click();
+        
     } catch (err) {
-        alert("印刷準備失敗: " + err);
+        alert("書き出し失敗: " + err);
         console.error(err);
     } finally {
-        // お片付け（印刷ダイアログを閉じた後に実行される）
-        // Note: window.print()は同期的に実行されるため、ダイアログを閉じるまで待機する
-        setTimeout(() => {
-            document.body.classList.remove('preview-mode');
-            gridLayer.style.display = gridPrevDisplay;
-            gridLayer.style.opacity = gridWasVisible ? 1 : 0;
-            renderGroups();
-        }, 100);
+        // お片付け
+        if (tempWrapper && tempWrapper.parentNode) {
+            originalParent.insertBefore(paperElement, originalNext);
+            tempWrapper.remove();
+        }
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.classList.remove('preview-mode');
+        canvasTransform.style.transform = originalTransform;
+        paperElement.style.left = originalLeft;
+        paperElement.style.top = originalTop;
+        gridLayer.style.display = gridPrevDisplay;
+        gridLayer.style.opacity = gridWasVisible ? 1 : 0;
+        renderGroups();
     }
 }
 
@@ -3666,13 +3659,13 @@ function updateFreeTextAttr() {
         if (newGroup.freeLayout) newGroup.h = h; 
     } else if (type === 'headline') {
         newGroup.type = 'headline'; newGroup.text = "見出し";
-        newGroup.h = h;
+        newGroup.h = h; 
         newGroup.fontFamily = '"Noto Sans JP", sans-serif'; newGroup.fontWeight = '700'; newGroup.isInverted = true;
         newGroup.padLong = 0; newGroup.padShort = 0;
     } else if (type === 'header') {
-        newGroup.type = 'header'; newGroup.h = h;
-        newGroup.text = "空想新聞";
-        newGroup.fontFamily = '"Noto Serif JP", serif';
+        newGroup.type = 'header'; newGroup.h = h; 
+        newGroup.text = "空想新聞"; 
+        newGroup.fontFamily = '"Shippori Mincho", serif'; 
         newGroup.fontWeight = 900;
         newGroup.pattern = "pat-lines"; 
         
