@@ -1508,6 +1508,7 @@ body.preview-mode .article-group { background-color: transparent; }
 <div id="header-measure-box"></div>
 
 <script>
+  const DEBUG_SVG = false;
   // --- スライダーと数値入力の連動ヘルパー ---
   function syncSliderValue(sliderId, inputId) {
     const slider = document.getElementById(sliderId);
@@ -2103,15 +2104,6 @@ body.preview-mode .article-group { background-color: transparent; }
 // 縦書きは 1文字ずつ座標配置（方式A）
 // ================================
 
-// XML escape
-function escXML(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 // displayText のHTML（<br>, <span class="tcy">）を token列に変換する
 function htmlToTokens(html) {
@@ -2167,7 +2159,7 @@ function escAttr(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
-// "BIZ UDMincho", serif → 'BIZ UDMincho', serif に正規化
+
 function toSvgFontFamily(ff) {
   if (!ff) return "'BIZ UDMincho', serif";
   const parts = String(ff).split(",").map(p => p.trim()).filter(Boolean);
@@ -2180,6 +2172,7 @@ function toSvgFontFamily(ff) {
 function renderTokensVerticalToSVG(tokens, boxW, boxH_logical, fontSize, lineGap, fontFamily, fontWeight, fill) {
   const pitchX = fontSize + lineGap;
   const pitchY = fontSize + lineGap;
+
   const cols = Math.max(1, Math.round((boxW + lineGap) / pitchX));
   const rows = Math.max(1, Math.floor(boxH_logical / pitchY));
 
@@ -2235,40 +2228,86 @@ function buildPaperSVG(fontCSS) {
   svg += `<?xml version="1.0" encoding="UTF-8"?>\n`;
   svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
 
-  // ✅ ここに fontCSS を入れる（A方式の本体）
+  // フォントCSSをSVG内へ（CDATA）
   svg += `<defs>\n`;
   svg += `<style><![CDATA[\n${fontCSS || ""}\n]]></style>\n`;
   svg += `</defs>\n`;
 
-  // ✅ 背景
+  // 背景（白）
   svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
 
-  // ✅ デバッグ枠（これが見えないならSVG→PNG経路が壊れてる）
-  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#000" stroke-width="4"/>\n`;
+  // デバッグ（必要なら true に）
+  if (DEBUG_SVG) {
+    svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#000" stroke-width="4"/>\n`;
+    svg += `<text x="40" y="80"  font-size="64" fill="${textColor}" font-family="'Yuji Syuku', serif" font-weight="400">筆</text>\n`;
+    svg += `<text x="40" y="160" font-size="64" fill="${textColor}" font-family="'Yuji Syuku', serif" font-weight="400">時</text>\n`;
+    svg += `<text x="40" y="240" font-size="64" fill="${textColor}" font-family="'Yuji Syuku', serif" font-weight="400">宿</text>\n`;
+  }
 
-  // ✅ デバッグ文字
-  svg += `<text x="40" y="80"
-    font-size="64"
-    fill="${textColor}"
-    font-family="'Yuji Syuku', serif"
-    font-weight="400">筆</text>\n`;
-
-  svg += `<text x="40" y="160"
-    font-size="64"
-    fill="${textColor}"
-    font-family="'Yuji Syuku', serif"
-    font-weight="400">時</text>\n`;
-
-  svg += `<text x="40" y="240"
-    font-size="64"
-    fill="${textColor}"
-    font-family="'Yuji Syuku', serif"
-    font-weight="400">宿</text>\n`;
-
-
-  // ここから先は groups を描く（まだ未実装なら、今はこのままでOK）
+  // --- ここから紙面要素描画 ---
   for (const g of groups) {
-    // まずは article だけでも描く処理を戻す
+    const gx = Math.round((g.x || 0) + (g.nudgeX || 0));
+    const gy = Math.round((g.y || 0) + (g.nudgeY || 0));
+
+    // 本文（記事）
+    if (g.type === "article") {
+      const fontFamily = g.fontFamily || config.fontFamily;
+      const fontWeight = g.fontWeight || config.fontWeight;
+
+      const loopCount = (g.freeLayout) ? 1 : (g.danCount || 1);
+      const segH_physical = (g.freeLayout && g.h) ? g.h : physicalHDan;
+      const segH_logical  = segH_physical / SCALE_Y;
+
+      for (let i = 0; i < loopCount; i++) {
+        const segY = gy + Math.round(i * (physicalHDan + physicalHGap));
+        svg += `<g transform="translate(${gx},${segY}) scale(1,${SCALE_Y})">\n`;
+
+        const html = (g.displayText && g.displayText[i]) ? g.displayText[i] : "";
+        const tokens = htmlToTokens(html);
+
+        svg += renderTokensVerticalToSVG(
+          tokens,
+          Math.round(g.w || 0),
+          segH_logical,
+          config.baseFontSize,
+          config.lineGap,
+          fontFamily,
+          fontWeight,
+          textColor
+        );
+
+        svg += `</g>\n`;
+      }
+      continue;
+    }
+
+    // フリーテキスト（あれば）
+    if (g.type === "free-text") {
+      const fontFamily = g.fontFamily || config.fontFamily;
+      const fontWeight = g.fontWeight || config.fontWeight;
+      const fontSize = g.fontSize || config.baseFontSize;
+      const lineGap = (g.letterSpacing != null) ? (config.lineGap + g.letterSpacing) : config.lineGap;
+
+      const h_physical = (g.h != null) ? g.h : (fontSize * SCALE_Y);
+      const h_logical  = h_physical / SCALE_Y;
+
+      svg += `<g transform="translate(${gx},${gy}) scale(1,${SCALE_Y})">\n`;
+      const tokens = htmlToTokens(String(g.text || "").replace(/\n/g, "<br>"));
+      svg += renderTokensVerticalToSVG(
+        tokens,
+        Math.round(g.w || 0),
+        h_logical,
+        fontSize,
+        lineGap,
+        fontFamily,
+        fontWeight,
+        textColor
+      );
+      svg += `</g>\n`;
+      continue;
+    }
+
+    // ※ headline/header/image などは次ステップで追加（完成まで走る用に拡張可能）
   }
 
   svg += `</svg>`;
@@ -2277,25 +2316,22 @@ function buildPaperSVG(fontCSS) {
 
 
 async function exportViaPureSVG(format) {
-  document.getElementById("export-menu-overlay").style.display = "none";
+  // メニューを隠す（必要なら）
+  const overlay = document.getElementById("export-menu-overlay");
+  if (overlay) overlay.style.display = "none";
 
   // A方式：CSS文字列を受け取る
   const fontCSS = await embedGoogleFonts();
 
-  console.log("fontCSS length:", fontCSS?.length);
-  console.log("fontCSS has @font-face:", /@font-face/.test(fontCSS || ""));
-
-
-  deselectAll();
-  document.body.classList.add("preview-mode");
-
-  // 念のためフォントロード待ち
+  // 念のため反映待ち
   await document.fonts.ready;
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 120));
 
-  renderGroups();
+  // 表示更新（あなたの既存処理）
+  if (typeof deselectAll === "function") deselectAll();
+  document.body.classList.add("preview-mode");
+  if (typeof renderGroups === "function") renderGroups();
 
-  // A方式：引数で渡す
   const { svg, width, height } = buildPaperSVG(fontCSS);
 
   const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
@@ -2311,10 +2347,10 @@ async function exportViaPureSVG(format) {
       img.src = url;
     });
 
-    // Safari対策：img.onload後もフォント適用が遅れることがあるので少し待つ（効くケースがある）
+    // Safari保険：onload後にフォント適用が遅れることがある
     await new Promise(r => setTimeout(r, 150));
 
-    const scale = 2;
+    const scale = 2; // 必要なら 1/2/3 で切替
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(width * scale);
     canvas.height = Math.round(height * scale);
@@ -2332,47 +2368,51 @@ async function exportViaPureSVG(format) {
       link.download = "shinbun.png";
     }
     link.click();
+  } catch (e) {
+    console.error("SVG export failed:", e);
+    alert("書き出しに失敗しました: " + e);
   } finally {
     URL.revokeObjectURL(url);
     document.body.classList.remove("preview-mode");
   }
 }
 
+
 async function embedGoogleFonts() {
   console.log("フォント埋め込み処理を開始します...");
 
-  if (window.location.protocol === "file:") {
-    alert("【注意】file:// 直開きはフォント埋め込みが動きません。Live Server等で開いてください。");
-    return "";
-  }
+  // Google Fonts の stylesheet link を拾う（必要なら条件を絞ってOK）
+  const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .filter(l => (l.href || "").includes("fonts.googleapis.com/css"));
 
-  // rel=stylesheet の Google Fonts だけ
-  const links = document.querySelectorAll('link[rel="stylesheet"][href*="fonts.googleapis.com"]');
   console.log(`処理対象のCSSリンク数: ${links.length}`);
   if (links.length === 0) return "";
 
-  // 既に埋め込み済みなら、その中身を返す（★A方式）
+  // 既に埋め込み済みなら、その中身を返す（A方式）
   const existing = document.getElementById("embedded-google-fonts");
   if (existing && existing.textContent && existing.textContent.includes("@font-face")) {
     console.log("既にフォントは埋め込み済みです。既存CSSを返します。");
     return existing.textContent;
   }
 
-  const urlRegex = /url\s*\(\s*(['"]?)(https:\/\/fonts\.gstatic\.com\/[^)'"]+)\1\s*\)/g;
+  // url(...) を拾う（fonts.gstatic.com 以外も入ることがあるので幅広に）
+  const urlRegex = /(url\()(['"]?)(https?:\/\/[^'")]+)\2(\))/g;
 
-  const allCss = await Promise.all(Array.from(links).map(async (link) => {
+  const allCss = await Promise.all(links.map(async (link) => {
     console.log(`CSS取得中...: ${link.href}`);
     const cssRes = await fetch(link.href);
     let cssText = await cssRes.text();
 
     const urls = [];
     let match;
-    while ((match = urlRegex.exec(cssText)) !== null) urls.push(match[2]);
+    while ((match = urlRegex.exec(cssText)) !== null) urls.push(match[3]);
+
     const uniqueUrls = Array.from(new Set(urls));
 
     const converted = await Promise.all(uniqueUrls.map(async (u) => {
       try {
         const res = await fetch(u);
+        if (!res.ok) throw new Error(`font fetch failed: ${res.status}`);
         const blob = await res.blob();
         const base64 = await new Promise((resolve, reject) => {
           const r = new FileReader();
@@ -2381,7 +2421,8 @@ async function embedGoogleFonts() {
           r.readAsDataURL(blob);
         });
         return { u, base64 };
-      } catch {
+      } catch (e) {
+        console.warn("font fetch failed:", u, e);
         return null;
       }
     }));
@@ -2400,16 +2441,18 @@ async function embedGoogleFonts() {
 
   const finalCss = allCss.join("\n");
 
-  // style に保存（ただし buildPaperSVG はもう依存しない）
-  const style = document.createElement("style");
-  style.id = "embedded-google-fonts";
+  // style に保存（他で参照したい場合のため）＋A方式で return
+  let style = document.getElementById("embedded-google-fonts");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "embedded-google-fonts";
+    document.head.appendChild(style);
+  }
   style.textContent = finalCss;
-  document.head.appendChild(style);
 
   console.log("★フォント埋め込み成功！");
-  return finalCss; // ★ここがA方式の核
+  return finalCss; // ←A方式の核
 }
-
 
 async function exportCanvasToImage(format) {
   // Pure SVG 優先（まずこれで勝つ）
