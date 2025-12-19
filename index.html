@@ -2235,15 +2235,23 @@ function buildPaperSVG(fontCSS) {
   svg += `<?xml version="1.0" encoding="UTF-8"?>\n`;
   svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
 
+  // ✅ ここに fontCSS を入れる（A方式の本体）
   svg += `<defs>\n`;
   svg += `<style><![CDATA[\n${fontCSS || ""}\n]]></style>\n`;
   svg += `</defs>\n`;
 
+  // ✅ 背景
   svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
 
-  // ↓（ここはあなたの今の article/free-text描画ループをそのまま入れてOK）
+  // ✅ デバッグ枠（これが見えないならSVG→PNG経路が壊れてる）
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="#000" stroke-width="4"/>\n`;
+
+  // ✅ デバッグ文字
+  svg += `<text x="40" y="60" font-size="48" fill="${textColor}">テ</text>\n`;
+
+  // ここから先は groups を描く（まだ未実装なら、今はこのままでOK）
   for (const g of groups) {
-    // ...
+    // まずは article だけでも描く処理を戻す
   }
 
   svg += `</svg>`;
@@ -2256,6 +2264,10 @@ async function exportViaPureSVG(format) {
 
   // A方式：CSS文字列を受け取る
   const fontCSS = await embedGoogleFonts();
+
+  console.log("fontCSS length:", fontCSS?.length);
+  console.log("fontCSS has @font-face:", /@font-face/.test(fontCSS || ""));
+
 
   deselectAll();
   document.body.classList.add("preview-mode");
