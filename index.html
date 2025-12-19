@@ -14,11 +14,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Google Fonts 一括読み込み -->
-<link href="https://fonts.googleapis.com/css2?family=Biz+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=block" rel="stylesheet">
 <!-- 画像生成用ライブラリ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- PDF生成用ライブラリ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
   :root {
@@ -911,87 +909,6 @@ body.preview-mode .article-group { background-color: transparent; }
   }
   #text-measure-box, #header-measure-box { position: absolute; top: -9999px; left: -9999px; visibility: hidden; white-space: nowrap; line-height: 1.0; }
 
-  /* 印刷用スタイル */
-  @media print {
-    /* ページ設定 */
-    @page {
-      size: A3 portrait;
-      margin: 0;
-    }
-
-    /* body全体を一度非表示にしてから必要な要素だけ表示 */
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: visible;
-      background: white;
-      visibility: hidden;
-    }
-
-    /* UI要素を完全に非表示 */
-    #toolbar,
-    #ui-panel,
-    #launch-screen,
-    .menu-overlay,
-    #export-menu-overlay,
-    #grid-layer,
-    .resize-handle {
-      display: none !important;
-      visibility: hidden !important;
-    }
-
-    /* 新聞用紙とその親要素を表示 */
-    #viewport,
-    #canvas-transform,
-    .paper,
-    .paper * {
-      visibility: visible !important;
-    }
-
-    #viewport {
-      overflow: visible !important;
-      width: 297mm !important;
-      height: 420mm !important;
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-    }
-
-    #canvas-transform {
-      transform: none !important;
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 297mm !important;
-      height: 420mm !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow: visible !important;
-    }
-
-    .paper {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      page-break-after: avoid;
-      width: 297mm !important;
-      height: 420mm !important;
-    }
-
-    .article-group.selected {
-      outline: none !important;
-      border: none !important;
-    }
-
-    /* 背景色を確実に印刷 */
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  }
-
 </style>
   
 </head>
@@ -1103,7 +1020,7 @@ body.preview-mode .article-group { background-color: transparent; }
         </div>
         <div class="tool-label">開く</div>
       </div>
-      <div class="tool-btn" onclick="exportCanvasToImage('pdf')" title="PDF書き出し">
+      <div class="tool-btn" onclick="openExportMenu()" title="書き出し">
         <div class="tool-icon">
           <svg viewBox="0 0 24 24" class="duotone-icon"><path d="M19,9h-4V3H9v6H5l7,7ZM5,18v2h14v-2Z" fill="currentColor"/></svg>
         </div>
@@ -2181,6 +2098,261 @@ body.preview-mode .article-group { background-color: transparent; }
 
   // --- エクスポート (html2canvas) ---
 
+// ================================
+// Pure SVG export (NO foreignObject)
+// 縦書きは 1文字ずつ座標配置（方式A）
+// ================================
+
+// XML escape
+function escXML(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// displayText のHTML（<br>, <span class="tcy">）を token列に変換する
+function htmlToTokens(html) {
+  if (!html) return [];
+  // <br> を \n に
+  let s = html.replace(/<br\s*\/?>/gi, "\n");
+
+  // tcy span を特殊トークンに（中身だけ抜く）
+  // 例: <span class="tcy">12</span>
+  const tokens = [];
+  const re = /<span\s+class=["']tcy["']\s*>(.*?)<\/span>/gi;
+
+  let last = 0;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const before = s.slice(last, m.index);
+    pushTextAsTokens(before, tokens);
+    tokens.push({ type: "tcy", value: decodeHtmlEntities(m[1]) });
+    last = m.index + m[0].length;
+  }
+  pushTextAsTokens(s.slice(last), tokens);
+
+  return tokens;
+
+  function pushTextAsTokens(text, out) {
+    // 他のタグは捨てる（<b>等が混ざっても落ちないように）
+    const plain = text.replace(/<[^>]+>/g, "");
+    const decoded = decodeHtmlEntities(plain);
+    for (const ch of decoded) {
+      if (ch === "\n") out.push({ type: "nl" });
+      else out.push({ type: "ch", value: ch });
+    }
+  }
+
+  function decodeHtmlEntities(str) {
+    // displayTextは内部生成なので重くない範囲でDOMを使って戻す
+    const ta = document.createElement("textarea");
+    ta.innerHTML = str;
+    return ta.value;
+  }
+}
+
+// 縦書き(右→左列, 上→下)で token を 1マスずつ配置してSVG文字列を返す
+function renderTokensVerticalToSVG(tokens, boxW, boxH_logical, fontSize, lineGap, fontFamily, fontWeight, fill) {
+  const pitchX = fontSize + lineGap;     // 列ピッチ（横）
+  const pitchY = fontSize + lineGap;     // 行ピッチ（縦）
+  const cols = Math.max(1, Math.round((boxW + lineGap) / pitchX));
+  const rows = Math.max(1, Math.floor(boxH_logical / pitchY));
+
+  let col = 0; // 0が右端列
+  let row = 0;
+
+  let out = "";
+
+  const commonStyle = `font-family:${fontFamily};font-weight:${fontWeight};font-size:${fontSize}px;fill:${fill};`;
+
+  const pushNewColumn = () => { col++; row = 0; };
+
+  for (const t of tokens) {
+    if (t.type === "nl") {
+      pushNewColumn();
+      continue;
+    }
+
+    // 溢れたら打ち切り（ここを「…」表示にしたければ後で追加できます）
+    if (col >= cols) break;
+
+    // 右→左なので、xは右端から引いていく
+    const xCenter = (boxW - (fontSize / 2)) - (col * pitchX);
+    const yCenter = (fontSize / 2) + (row * pitchY);
+
+    if (t.type === "tcy") {
+      // 2桁などを1マスに収める（textLengthで押し込む）
+      out += `<text x="${xCenter}" y="${yCenter}" text-anchor="middle" dominant-baseline="central" style="${commonStyle}" textLength="${fontSize}" lengthAdjust="spacingAndGlyphs">${escXML(t.value)}</text>\n`;
+      row++;
+    } else {
+      out += `<text x="${xCenter}" y="${yCenter}" text-anchor="middle" dominant-baseline="central" style="${commonStyle}">${escXML(t.value)}</text>\n`;
+      row++;
+    }
+
+    if (row >= rows) pushNewColumn();
+  }
+
+  return out;
+}
+
+// SVG組み立て（paper全体）
+function buildPaperSVG() {
+  const paperEl = document.querySelector(".paper");
+  const W = Math.round(paperEl.offsetWidth);
+  const H = Math.round(paperEl.offsetHeight);
+
+  const embeddedStyle = document.getElementById("embedded-google-fonts");
+  const fontCSS = embeddedStyle ? embeddedStyle.textContent : "";
+
+  // 紙面背景（あなたの config.paperColor を使う）
+  const paperColor = config.paperColor || "#ffffff";
+  const textColor  = config.textColor  || "#111111";
+
+  let svg = "";
+  svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
+  svg += `<defs>\n`;
+  // Google Fonts Base64化した @font-face をSVG内に埋める（重要）
+  svg += `<style><![CDATA[\n${fontCSS}\n]]></style>\n`;
+  svg += `</defs>\n`;
+
+  // 背景
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
+
+  // 重要: 紙面は縦方向に SCALE_Y が入る設計なので、
+  // 文字配置は「論理座標」で組んで、グループ単位で scale(1, SCALE_Y) をかけて見た目を合わせる。
+  // SCALE_Y はあなたの定数（const SCALE_Y=0.85）を使用 :contentReference[oaicite:3]{index=3}
+
+  for (const g of groups) {
+    const gx = Math.round((g.x || 0) + (g.nudgeX || 0));
+    const gy = Math.round((g.y || 0) + (g.nudgeY || 0));
+
+    // 画像・線などは必要なら後で拡張（まずは文章の勝利を優先）
+    if (g.type === "article") {
+      const fontFamily = g.fontFamily || config.fontFamily;
+      const fontWeight = g.fontWeight || config.fontWeight;
+
+      const loopCount = (g.freeLayout) ? 1 : (g.danCount || 1);
+
+      // 各段の物理高さは physicalHDan（= baseHDan * SCALE_Y） :contentReference[oaicite:4]{index=4}
+      // ロジカル高さに戻すため /SCALE_Y
+      const segH_physical = (g.freeLayout && g.h) ? g.h : physicalHDan;
+      const segH_logical  = segH_physical / SCALE_Y;
+
+      for (let i = 0; i < loopCount; i++) {
+        const segY = gy + Math.round(i * (physicalHDan + physicalHGap));
+
+        // segment単位で縦スケール（yだけ）を掛ける
+        svg += `<g transform="translate(${gx},${segY}) scale(1,${SCALE_Y})">\n`;
+
+        // displayText[i] にHTMLが入ってる（<br>, <span class="tcy">） :contentReference[oaicite:5]{index=5}
+        const html = (g.displayText && g.displayText[i]) ? g.displayText[i] : "";
+        const tokens = htmlToTokens(html);
+
+        svg += renderTokensVerticalToSVG(
+          tokens,
+          Math.round(g.w || 0),
+          segH_logical,
+          config.baseFontSize,
+          config.lineGap,
+          fontFamily,
+          fontWeight,
+          textColor
+        );
+
+        svg += `</g>\n`;
+      }
+    }
+
+    // free-text も縦書きなら同じ方式で流せる（最低限対応）
+    if (g.type === "free-text") {
+      const fontFamily = g.fontFamily || config.fontFamily;
+      const fontWeight = g.fontWeight || config.fontWeight;
+      const fontSize = g.fontSize || config.baseFontSize;
+      const lineGap = (g.letterSpacing != null) ? (config.lineGap + g.letterSpacing) : config.lineGap;
+
+      const h_physical = (g.h != null) ? g.h : (fontSize * SCALE_Y);
+      const h_logical  = h_physical / SCALE_Y;
+
+      svg += `<g transform="translate(${gx},${gy}) scale(1,${SCALE_Y})">\n`;
+      const tokens = htmlToTokens(String(g.text || "").replace(/\n/g, "<br>"));
+      svg += renderTokensVerticalToSVG(
+        tokens,
+        Math.round(g.w || 0),
+        h_logical,
+        fontSize,
+        lineGap,
+        fontFamily,
+        fontWeight,
+        textColor
+      );
+      svg += `</g>\n`;
+    }
+  }
+
+  svg += `</svg>`;
+  return { svg, width: W, height: H };
+}
+
+// SVG -> PNG/JPG でダウンロード
+async function exportViaPureSVG(format) {
+  document.getElementById("export-menu-overlay").style.display = "none";
+
+  // フォントをBase64化して style#embedded-google-fonts を作る（あなたの既存処理） :contentReference[oaicite:6]{index=6}
+  await embedGoogleFonts();
+
+  deselectAll();
+  document.body.classList.add("preview-mode");
+
+  // 念のためフォントロード待ち
+  await document.fonts.ready;
+  await new Promise(r => setTimeout(r, 200));
+
+  renderGroups();
+
+  const { svg, width, height } = buildPaperSVG();
+
+  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  try {
+    const img = new Image();
+    img.decoding = "async";
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = url;
+    });
+
+    // PNG化（scale=2は今の html2canvas と同じノリ）
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.drawImage(img, 0, 0);
+
+    const link = document.createElement("a");
+    if (format === "jpg" || format === "jpeg") {
+      link.href = canvas.toDataURL("image/jpeg", 0.92);
+      link.download = "shinbun.jpg";
+    } else {
+      link.href = canvas.toDataURL("image/png");
+      link.download = "shinbun.png";
+    }
+    link.click();
+  } finally {
+    URL.revokeObjectURL(url);
+    document.body.classList.remove("preview-mode");
+  }
+}
+
+
 // ▼▼▼ ここからコピーして、既存の exportCanvasToImage 関数と置き換えてください ▼▼▼
 
 // 【新規追加】Google Fontsを強制的にBase64化して埋め込む関数
@@ -2290,60 +2462,129 @@ async function embedGoogleFonts() {
 }
 // ▲▲▲ 完成版ここまで ▲▲▲
 
-// 書き出し実行関数（PDF方式）
 async function exportCanvasToImage(format) {
-    // フォントの読み込みを待つ
-    if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
+  // Pure SVG 優先（まずこれで勝つ）
+  try {
+    await exportViaPureSVG(format);
+    return;
+  } catch (e) {
+    console.warn("Pure SVG export failed. Fallback to html2canvas:", e);
+    // ↓ ここから下は“保険”として html2canvas を走らせる
+  }
+
+  // ====== ここから先はあなたの既存 html2canvas 方式 ======
+  document.getElementById('export-menu-overlay').style.display='none';
+
+  await embedGoogleFonts();
+
+  deselectAll();
+  document.body.classList.add('preview-mode');
+
+  const inkTasks = [];
+  groups.forEach(g => {
+    if (g.type === 'image' && g.colorMode === 'ink' && !g.imageInkSrc) {
+      inkTasks.push(convertImageToInk(g, false));
     }
-
-    // 追加の待機時間（フォントが完全に適用されるまで）
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    // インク画像の更新待ち
-    const inkTasks = [];
-    groups.forEach(g => {
-        if (g.type === 'image' && g.colorMode === 'ink' && !g.imageInkSrc) {
-            inkTasks.push(convertImageToInk(g, false));
-        }
-    });
-    if (inkTasks.length > 0) {
-        await Promise.all(inkTasks);
-        renderGroups();
-    }
-
-    // 印刷前の準備
-    deselectAll();
-    document.body.classList.add('preview-mode');
-
-    // グリッドを消す
-    const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
-    const gridPrevDisplay = gridLayer.style.display;
-    gridLayer.style.display = 'none';
-    gridLayer.style.opacity = 0;
-
+  });
+  if (inkTasks.length > 0) {
+    await Promise.all(inkTasks);
     renderGroups();
+  }
 
-    // 少し待機してレンダリングを確実にする
-    await new Promise(r => setTimeout(r, 300));
+  const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
+  const gridPrevDisplay = gridLayer.style.display;
+  gridLayer.style.display = 'none';
+  gridLayer.style.opacity = 0;
 
-    try {
-        // 印刷ダイアログを開く
-        window.print();
-    } catch (err) {
-        alert("印刷準備失敗: " + err);
-        console.error(err);
-    } finally {
-        // お片付け（印刷ダイアログを閉じた後に実行される）
-        // Note: window.print()は同期的に実行されるため、ダイアログを閉じるまで待機する
-        setTimeout(() => {
-            document.body.classList.remove('preview-mode');
-            gridLayer.style.display = gridPrevDisplay;
-            gridLayer.style.opacity = gridWasVisible ? 1 : 0;
-            renderGroups();
-        }, 100);
+  await document.fonts.ready;
+  await new Promise(r => setTimeout(r, 1000));
+
+  renderGroups();
+
+  const paperElement = document.querySelector('.paper');
+
+  const originalTransform = canvasTransform.style.transform;
+  const originalLeft = paperElement.style.left;
+  const originalTop = paperElement.style.top;
+  const originalParent = paperElement.parentNode;
+  const originalNext = paperElement.nextSibling;
+  const originalBodyOverflow = document.body.style.overflow;
+  const originalHtmlOverflow = document.documentElement.style.overflow;
+
+  window.scrollTo(0,0);
+  canvasTransform.style.transform = "scale(1)";
+  paperElement.style.left = "0px";
+  paperElement.style.top = "0px";
+  paperElement.style.margin = "0";
+
+  const tempWrapper = document.createElement('div');
+  tempWrapper.style.position = 'absolute';
+  tempWrapper.style.top = '0';
+  tempWrapper.style.left = '0';
+  tempWrapper.style.overflow = 'visible';
+  tempWrapper.style.zIndex = '-1';
+  document.body.appendChild(tempWrapper);
+  tempWrapper.appendChild(paperElement);
+  document.body.style.overflow = 'visible';
+  document.documentElement.style.overflow = 'visible';
+
+  try {
+    const canvas = await html2canvas(paperElement, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: true,
+      backgroundColor: null,
+      scrollX: 0, scrollY: 0,
+      x: 0, y: 0,
+      width: paperElement.offsetWidth,
+      height: paperElement.offsetHeight,
+      windowWidth: paperElement.scrollWidth,
+      windowHeight: paperElement.scrollHeight,
+      foreignObjectRendering: true,
+
+      onclone: function(clonedDoc) {
+        const originalStyle = document.getElementById('embedded-google-fonts');
+        if (originalStyle) {
+          const newStyle = clonedDoc.createElement('style');
+          newStyle.id = 'embedded-google-fonts'; // ←これ付けるとデバッグしやすい
+          newStyle.textContent = originalStyle.textContent;
+          clonedDoc.head.appendChild(newStyle);
+        }
+        clonedDoc.body.classList.add('preview-mode');
+      }
+    });
+
+    const link = document.createElement('a');
+    if (format === 'png') {
+      link.href = canvas.toDataURL('image/png');
+      link.download = 'shinbun.png';
+    } else {
+      link.href = canvas.toDataURL('image/jpeg', 0.9);
+      link.download = 'shinbun.jpg';
     }
+    link.click();
+
+  } catch (err) {
+    alert("書き出し失敗: " + err);
+    console.error(err);
+  } finally {
+    if (tempWrapper && tempWrapper.parentNode) {
+      originalParent.insertBefore(paperElement, originalNext);
+      tempWrapper.remove();
+    }
+    document.body.style.overflow = originalBodyOverflow;
+    document.documentElement.style.overflow = originalHtmlOverflow;
+    document.body.classList.remove('preview-mode');
+    canvasTransform.style.transform = originalTransform;
+    paperElement.style.left = originalLeft;
+    paperElement.style.top = originalTop;
+    gridLayer.style.display = gridPrevDisplay;
+    gridLayer.style.opacity = gridWasVisible ? 1 : 0;
+    renderGroups();
+  }
 }
+
 
   // 終了時確認 (未保存の場合)
   window.onbeforeunload = function(e) {
@@ -3666,13 +3907,13 @@ function updateFreeTextAttr() {
         if (newGroup.freeLayout) newGroup.h = h; 
     } else if (type === 'headline') {
         newGroup.type = 'headline'; newGroup.text = "見出し";
-        newGroup.h = h;
+        newGroup.h = h; 
         newGroup.fontFamily = '"Noto Sans JP", sans-serif'; newGroup.fontWeight = '700'; newGroup.isInverted = true;
         newGroup.padLong = 0; newGroup.padShort = 0;
     } else if (type === 'header') {
-        newGroup.type = 'header'; newGroup.h = h;
-        newGroup.text = "空想新聞";
-        newGroup.fontFamily = '"Noto Serif JP", serif';
+        newGroup.type = 'header'; newGroup.h = h; 
+        newGroup.text = "空想新聞"; 
+        newGroup.fontFamily = '"Shippori Mincho", serif'; 
         newGroup.fontWeight = 900;
         newGroup.pattern = "pat-lines"; 
         
