@@ -2200,6 +2200,7 @@ function renderTokensVerticalToSVG(tokens, boxW, boxH_logical, fontSize, lineGap
 
 // SVG組み立て（paper全体）
 function buildPaperSVG() {
+
   const paperEl = document.querySelector(".paper");
   const W = Math.round(paperEl.offsetWidth);
   const H = Math.round(paperEl.offsetHeight);
@@ -2212,14 +2213,15 @@ function buildPaperSVG() {
   const textColor  = config.textColor  || "#111111";
 
   let svg = "";
+  // 背景
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
+
   svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
   svg += `<defs>\n`;
   // Google Fonts Base64化した @font-face をSVG内に埋める（重要）
   svg += `<style><![CDATA[\n${fontCSS}\n]]></style>\n`;
   svg += `</defs>\n`;
 
-  // 背景
-  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
 
   // 重要: 紙面は縦方向に SCALE_Y が入る設計なので、
   // 文字配置は「論理座標」で組んで、グループ単位で scale(1, SCALE_Y) をかけて見た目を合わせる。
@@ -4390,7 +4392,7 @@ function updateFreeTextAttr() {
       // コンテンツ描画分岐
       if (g.type === 'headline') {
           const isVertical = (totalH > g.w);
-          const isInverted = (g.isInverted !== false);
+          const isInverted = (g.isInverted === true);
           const padLong = g.padLong || 0; const padShort = g.padShort || 0;
           const availW = g.w - (isVertical ? (padShort * 2) : (padLong * 2));
           const availH = totalH - (isVertical ? (padLong * 2) : (padShort * 2));
@@ -4680,7 +4682,7 @@ function updateFreeTextAttr() {
           let scale = measuredLong > 0 ? longSide / measuredLong : 1.0;
 
           // テキスト
-          const isTitleInverted = g.isTitleInverted === true;
+          const isTitleInverted = (g.isTitleInverted === true);
           const strokeW = g.titleStrokeWidth || 0;
           const translateX = g.titleNudgeX || 0;
           const translateY = g.titleNudgeY || 0;
