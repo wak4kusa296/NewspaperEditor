@@ -915,40 +915,74 @@ body.preview-mode .article-group { background-color: transparent; }
   @media print {
     /* ページ設定 */
     @page {
-      size: A3;
+      size: A3 portrait;
       margin: 0;
     }
 
-    /* 不要な要素を非表示 */
-    body > *:not(#canvas-transform) {
+    /* body全体を一度非表示にしてから必要な要素だけ表示 */
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+      background: white;
+      visibility: hidden;
+    }
+
+    /* UI要素を完全に非表示 */
+    #toolbar,
+    #ui-panel,
+    #launch-screen,
+    .menu-overlay,
+    #export-menu-overlay,
+    #grid-layer,
+    .resize-handle {
       display: none !important;
+      visibility: hidden !important;
+    }
+
+    /* 新聞用紙とその親要素を表示 */
+    #viewport,
+    #canvas-transform,
+    .paper,
+    .paper * {
+      visibility: visible !important;
+    }
+
+    #viewport {
+      overflow: visible !important;
+      width: 297mm !important;
+      height: 420mm !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
     }
 
     #canvas-transform {
       transform: none !important;
-      position: static !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 297mm !important;
+      height: 420mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
     }
 
     .paper {
-      position: static !important;
+      position: absolute !important;
       left: 0 !important;
       top: 0 !important;
       margin: 0 !important;
       box-shadow: none !important;
       page-break-after: avoid;
+      width: 297mm !important;
+      height: 420mm !important;
     }
 
-    /* グリッドと選択枠を非表示 */
-    #grid-layer,
-    .resize-handle,
-    .selected {
-      display: none !important;
-    }
-
-    /* リサイズハンドルを非表示 */
-    .article-group::before,
-    .article-group::after {
-      display: none !important;
+    .article-group.selected {
+      outline: none !important;
+      border: none !important;
     }
 
     /* 背景色を確実に印刷 */
@@ -2266,9 +2300,6 @@ async function exportCanvasToImage(format) {
     // 追加の待機時間（フォントが完全に適用されるまで）
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    deselectAll();
-    document.body.classList.add('preview-mode');
-
     // インク画像の更新待ち
     const inkTasks = [];
     groups.forEach(g => {
@@ -2280,104 +2311,37 @@ async function exportCanvasToImage(format) {
         await Promise.all(inkTasks);
         renderGroups();
     }
-    
+
+    // 印刷前の準備
+    deselectAll();
+    document.body.classList.add('preview-mode');
+
     // グリッドを消す
     const gridWasVisible = document.getElementById('chk-grid') ? document.getElementById('chk-grid').checked : true;
     const gridPrevDisplay = gridLayer.style.display;
     gridLayer.style.display = 'none';
     gridLayer.style.opacity = 0;
 
-    // 念のため少し待つ
-    await document.fonts.ready;
-    await new Promise(r => setTimeout(r, 1000));
-
     renderGroups();
-    
-    const paperElement = document.querySelector('.paper');
-    
-    // 表示リセット用
-    const originalTransform = canvasTransform.style.transform;
-    const originalLeft = paperElement.style.left;
-    const originalTop = paperElement.style.top;
-    const originalParent = paperElement.parentNode;
-    const originalNext = paperElement.nextSibling;
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalHtmlOverflow = document.documentElement.style.overflow;
-    
-    // 位置リセット
-    window.scrollTo(0,0);
-    canvasTransform.style.transform = "scale(1)";
-    paperElement.style.left = "0px";
-    paperElement.style.top = "0px";
-    paperElement.style.margin = "0";
-    
-    // 一時配置
-    const tempWrapper = document.createElement('div');
-    tempWrapper.style.position = 'absolute';
-    tempWrapper.style.top = '0';
-    tempWrapper.style.left = '0';
-    tempWrapper.style.overflow = 'visible';
-    tempWrapper.style.zIndex = '-1';
-    document.body.appendChild(tempWrapper);
-    tempWrapper.appendChild(paperElement);
-    document.body.style.overflow = 'visible';
-    document.documentElement.style.overflow = 'visible';
+
+    // 少し待機してレンダリングを確実にする
+    await new Promise(r => setTimeout(r, 300));
 
     try {
-        // html2canvasで用紙を画像化
-        const canvas = await html2canvas(paperElement, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: config.paperColor,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0,
-            width: paperElement.offsetWidth,
-            height: paperElement.offsetHeight,
-            windowWidth: paperElement.scrollWidth,
-            windowHeight: paperElement.scrollHeight,
-            foreignObjectRendering: true
-        });
-
-        // 用紙サイズ（A3の場合：297mm x 420mm）
-        const paperWidthMM = 297;
-        const paperHeightMM = 420;
-
-        // jsPDFでPDF作成
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a3'
-        });
-
-        // Canvasの画像をPDFに追加
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', 0, 0, paperWidthMM, paperHeightMM);
-
-        // PDFをダウンロード
-        pdf.save('shinbun.pdf');
-
+        // 印刷ダイアログを開く
+        window.print();
     } catch (err) {
-        alert("PDF書き出し失敗: " + err);
+        alert("印刷準備失敗: " + err);
         console.error(err);
     } finally {
-        // お片付け
-        if (tempWrapper && tempWrapper.parentNode) {
-            originalParent.insertBefore(paperElement, originalNext);
-            tempWrapper.remove();
-        }
-        document.body.style.overflow = originalBodyOverflow;
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.body.classList.remove('preview-mode');
-        canvasTransform.style.transform = originalTransform;
-        paperElement.style.left = originalLeft;
-        paperElement.style.top = originalTop;
-        gridLayer.style.display = gridPrevDisplay;
-        gridLayer.style.opacity = gridWasVisible ? 1 : 0;
-        renderGroups();
+        // お片付け（印刷ダイアログを閉じた後に実行される）
+        // Note: window.print()は同期的に実行されるため、ダイアログを閉じるまで待機する
+        setTimeout(() => {
+            document.body.classList.remove('preview-mode');
+            gridLayer.style.display = gridPrevDisplay;
+            gridLayer.style.opacity = gridWasVisible ? 1 : 0;
+            renderGroups();
+        }, 100);
     }
 }
 
