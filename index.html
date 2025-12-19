@@ -2213,60 +2213,17 @@ function buildPaperSVG() {
   svg += `<?xml version="1.0" encoding="UTF-8"?>\n`;
   svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n`;
 
-  // 先に defs（フォント）を入れる
+  // フォントは defs に入れる
   svg += `<defs>\n`;
   svg += `<style><![CDATA[\n${fontCSS}\n]]></style>\n`;
   svg += `</defs>\n`;
 
-    // （以下は今のまま、groups を回して text を足していく）
+  // 背景 rect は svg の「中」に入れる（これ超重要）
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="${paperColor}"/>\n`;
+
+  // ↓ここから下は「いまの groups を回して text を足す処理」をそのまま続けてOK
   for (const g of groups) {
-    const gx = Math.round((g.x || 0) + (g.nudgeX || 0));
-    const gy = Math.round((g.y || 0) + (g.nudgeY || 0));
-
-    if (g.type === "article") {
-      const fontFamily = g.fontFamily || config.fontFamily;
-      const fontWeight = g.fontWeight || config.fontWeight;
-
-      const loopCount = (g.freeLayout) ? 1 : (g.danCount || 1);
-      const segH_physical = (g.freeLayout && g.h) ? g.h : physicalHDan;
-      const segH_logical  = segH_physical / SCALE_Y;
-
-      for (let i = 0; i < loopCount; i++) {
-        const segY = gy + Math.round(i * (physicalHDan + physicalHGap));
-        svg += `<g transform="translate(${gx},${segY}) scale(1,${SCALE_Y})">\n`;
-
-        const html = (g.displayText && g.displayText[i]) ? g.displayText[i] : "";
-        const tokens = htmlToTokens(html);
-
-        svg += renderTokensVerticalToSVG(
-          tokens,
-          Math.round(g.w || 0),
-          segH_logical,
-          config.baseFontSize,
-          config.lineGap,
-          fontFamily,
-          fontWeight,
-          textColor
-        );
-
-        svg += `</g>\n`;
-      }
-    }
-
-    if (g.type === "free-text") {
-      const fontFamily = g.fontFamily || config.fontFamily;
-      const fontWeight = g.fontWeight || config.fontWeight;
-      const fontSize = g.fontSize || config.baseFontSize;
-      const lineGap = (g.letterSpacing != null) ? (config.lineGap + g.letterSpacing) : config.lineGap;
-
-      const h_physical = (g.h != null) ? g.h : (fontSize * SCALE_Y);
-      const h_logical  = h_physical / SCALE_Y;
-
-      svg += `<g transform="translate(${gx},${gy}) scale(1,${SCALE_Y})">\n`;
-      const tokens = htmlToTokens(String(g.text || "").replace(/\n/g, "<br>"));
-      svg += renderTokensVerticalToSVG(tokens, Math.round(g.w || 0), h_logical, fontSize, lineGap, fontFamily, fontWeight, textColor);
-      svg += `</g>\n`;
-    }
+    // ...
   }
 
   svg += `</svg>`;
