@@ -1,727 +1,744 @@
-﻿<!DOCTYPE html>
+
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SVG Newspaper Tool</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=BIZ+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=block"
-        rel="stylesheet">
-
-    <style>
-        :root {
-            --ui-bg: #DDDDDD;
-            --panel-bg: #FFFFFF;
-            --border-col: #DDDDDD;
-            --primary: #333333;
-            --accent: #333333;
-            --masthead: #161616;
-            --link-col: #333333;
-            --text: #333333;
-        }
-
-        body {
-            margin: 0;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            font-family: "Noto Sans JP", sans-serif;
-            background: var(--ui-bg);
-            color: var(--text);
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-        }
-
-        /* 左サイドバー */
-        .toolbar {
-            width: 50px;
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            background: var(--panel-bg);
-            border-right: 1px solid var(--border-col);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0;
-            z-index: 100;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        .toolbar::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .toolbar::-webkit-scrollbar-thumb {
-            background: var(--border-col);
-            border-radius: 2px;
-        }
-
-        .tool-btn {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 8px;
-            border: 1px solid var(--border-col);
-            background: var(--panel-bg);
-            cursor: pointer;
-            border-radius: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 2px;
-            font-size: 18px;
-            transition: background 0.2s;
-            position: relative;
-            filter: grayscale(100%);
-        }
-
-        .tool-btn:hover {
-            background: var(--ui-bg);
-        }
-
-        .tool-btn.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-            filter: grayscale(0%);
-        }
-
-        .tool-btn.active.btn-heading {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .tool-btn.active.btn-masthead {
-            background: var(--masthead);
-            border-color: var(--masthead);
-        }
-
-        .tool-label {
-            font-size: 8px;
-            line-height: 1;
-            font-weight: 500;
-        }
-
-        /* メインエリア */
-        .viewport {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            background: var(--ui-bg);
-            background-image: none;
-            background-size: 20px 20px;
-            cursor: default;
-            touch-action: none;
-        }
-
-        .viewport.mode-create {
-            cursor: crosshair;
-        }
-
-        .viewport.mode-hand {
-            cursor: grab;
-        }
-
-        .viewport.mode-hand:active {
-            cursor: grabbing;
-        }
-
-        /* SVG用紙コンテナ */
-        #canvas-container {
-            transform-origin: 0 0;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        /* SVG用紙 */
-        #main-svg {
-            background: transparent;
-            display: block;
-            shape-rendering: geometricPrecision;
-            text-rendering: geometricPrecision;
-            overflow: visible;
-        }
-
-        /* 右サイドバー */
-        .properties {
-            width: 280px;
-            background: var(--panel-bg);
-            border-left: 1px solid var(--border-col);
-            padding: 15px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            z-index: 100;
-        }
-
-        .prop-group {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
-        }
-
-        .prop-group:last-child {
-            border-bottom: none;
-        }
-
-        .prop-label {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
-            color: #555;
-        }
-
-        .prop-row {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 8px;
-            align-items: center;
-        }
-
-        .prop-input,
-        .prop-select,
-        .prop-textarea {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 6px;
-            border: 1px solid var(--border-col);
-            margin-bottom: 8px;
-            font-size: 14px;
-            font-family: inherit;
-            user-select: text;
-            -webkit-user-select: text;
-        }
-
-        .prop-textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        /* スライダー */
-        input[type=range] {
-            -webkit-appearance: none;
-            background: transparent;
-            margin: 0;
-            vertical-align: middle;
-            cursor: pointer;
-        }
-
-        input[type=range]:focus {
-            outline: none;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: var(--primary);
-            cursor: pointer;
-            margin-top: -6px;
-            border: 2px solid #fff;
-        }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-        }
-
-        .heading-slider::-webkit-slider-thumb {
-            background: var(--accent);
-        }
-
-        .masthead-slider::-webkit-slider-thumb {
-            background: var(--masthead);
-        }
-
-        .btn-primary {
-            width: 100%;
-            padding: 8px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn-primary:hover {
-            opacity: 0.9;
-        }
-
-        .btn-delete {
-            background: #e53935;
-            margin-top: 20px;
-        }
-
-        .btn-secondary {
-            flex: 1;
-            padding: 6px;
-            background: #f0f0f0;
-            color: #333;
-            border: 1px solid var(--border-col);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            text-align: center;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        /* UIスタイル */
-        .selection-rect {
-            fill: none;
-            stroke: var(--primary);
-            stroke-width: 2px;
-            stroke-dasharray: 4 2;
-            pointer-events: none;
-            vector-effect: non-scaling-stroke;
-        }
-
-        .selection-rect.heading-select {
-            stroke: var(--accent);
-        }
-
-        .selection-rect.masthead-select {
-            stroke: var(--masthead);
-        }
-
-        .creation-preview-rect {
-            fill: rgba(33, 150, 243, 0.2);
-            stroke: var(--primary);
-            stroke-width: 1px;
-            stroke-dasharray: 4 2;
-            pointer-events: none;
-            vector-effect: non-scaling-stroke;
-        }
-
-        /* ハンドル */
-        .handle-group {
-            cursor: pointer;
-        }
-
-        .resize-handle-visual {
-            fill: white;
-            stroke: var(--primary);
-            stroke-width: 2px;
-            vector-effect: non-scaling-stroke;
-            pointer-events: none;
-        }
-
-        .resize-handle-hit {
-            fill: #ffffff;
-            fill-opacity: 0;
-            cursor: pointer;
-            pointer-events: all;
-        }
-
-        .handle-group:hover .resize-handle-visual {
-            fill: var(--primary);
-        }
-
-        .handle-group.heading-handle .resize-handle-visual {
-            stroke: var(--accent);
-        }
-
-        .handle-group.heading-handle:hover .resize-handle-visual {
-            fill: var(--accent);
-        }
-
-        .handle-group.masthead-handle .resize-handle-visual {
-            stroke: var(--masthead);
-        }
-
-        .handle-group.masthead-handle:hover .resize-handle-visual {
-            fill: var(--masthead);
-        }
-
-        /* リンクハンドル (四角) */
-        .link-handle-rect {
-            fill: #fff;
-            stroke: var(--link-col);
-            stroke-width: 2px;
-            cursor: pointer;
-            vector-effect: non-scaling-stroke;
-        }
-
-        .link-handle-rect.connected {
-            fill: var(--link-col);
-        }
-
-        .link-handle-hit {
-            fill: transparent;
-            cursor: pointer;
-            pointer-events: all;
-        }
-
-        .link-line-preview {
-            stroke: var(--link-col);
-            stroke-width: 2px;
-            stroke-dasharray: 4 2;
-            fill: none;
-            pointer-events: none;
-        }
-
-        .cursor-nw {
-            cursor: nw-resize;
-        }
-
-        .cursor-ne {
-            cursor: ne-resize;
-        }
-
-        .cursor-sw {
-            cursor: sw-resize;
-        }
-
-        .cursor-se {
-            cursor: se-resize;
-        }
-
-        .margin-guide {
-            fill: none;
-            stroke: #00bcd4;
-            stroke-width: 1px;
-            stroke-dasharray: 5 5;
-            pointer-events: none;
-            vector-effect: non-scaling-stroke;
-        }
-
-        /* 選択モードは通常のカーソル */
-        .viewport.mode-select {
-            cursor: default;
-        }
-
-        text {
-            user-select: none;
-            pointer-events: none;
-        }
-
-        .grid-line,
-        .grid-rect {
-            stroke: #b3e5fc;
-            stroke-width: 0.5px;
-            fill: none;
-            pointer-events: none;
-            vector-effect: non-scaling-stroke;
-        }
-
-        .hit-rect {
-            fill: #ffffff;
-            fill-opacity: 0;
-            cursor: move;
-            pointer-events: all;
-        }
-
-        /* 色制御用クラス */
-        .ink-fill {
-            fill: #333;
-        }
-
-        .ink-stroke {
-            stroke: #333;
-        }
-
-        .paper-fill {
-            fill: #fff;
-        }
-
-        .paper-stroke {
-            stroke: #fff;
-        }
-
-        /* リンク接続候補（ドラッグ開始時に枠線だけ表示） */
-        .link-candidate .hit-rect {
-            stroke: var(--link-col);
-            stroke-width: 2px;
-            stroke-dasharray: 4 4;
-            fill: none;
-            /* 塗りつぶしなし */
-        }
-
-        /* リンク接続対象（ホバー時・強調） */
-        .highlight-target .hit-rect {
-            stroke: var(--link-col);
-            stroke-width: 3px;
-            stroke-dasharray: 4 4;
-            fill: rgba(156, 39, 176, 0.2) !important;
-            fill-opacity: 1 !important;
-        }
-
-        /* 自由テキスト揃え位置ボタン */
-        .align-btn-group {
-            display: flex;
-            gap: 6px;
-            flex-wrap: nowrap;
-            margin-bottom: 8px;
-            justify-content: space-between;
-        }
-
-        /* 3x3グリッド配置ボタン */
-        .align-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 4px;
-            margin-bottom: 8px;
-        }
-
-        .align-grid-btn {
-            aspect-ratio: 1;
-            border: 1px solid #666;
-            background: #fff;
-            cursor: pointer;
-            border-radius: 3px;
-            padding: 0;
-            min-height: 32px;
-            transition: all 0.2s;
-        }
-
-        .align-grid-btn:hover {
-            background: #f0f0f0;
-            border-color: #333;
-        }
-
-        .align-grid-btn.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        #freetext-align-cross.direction-vertical {
-            flex-direction: row-reverse;
-        }
-
-        .align-btn {
-            flex: 1;
-            min-width: 80px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #fff;
-            padding: 8px 6px;
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            transition: 0.2s;
-        }
-
-        .align-btn span {
-            line-height: 1;
-        }
-
-        .align-btn:hover {
-            background: #f0f0f0;
-        }
-
-        .align-btn--active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-        }
-
-        .color-toggle-row {
-            display: flex;
-            gap: 8px;
-        }
-
-        .color-toggle-btn {
-            flex: 1;
-            padding: 6px 0;
-            border: 1px solid var(--border-col);
-            background: #fff;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-        }
-
-        .color-toggle-btn.active {
-            background: var(--primary);
-            color: #fff;
-            border-color: var(--primary);
-        }
-
-        .align-btn .label-vertical,
-        .align-btn .label-horizontal {
-            display: none;
-        }
-
-        .align-btn-group.direction-vertical .label-vertical {
-            display: inline;
-        }
-
-        .align-btn-group.direction-horizontal .label-horizontal {
-            display: inline;
-        }
-
-        /* ローディング画面 */
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: var(--ui-bg);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10001;
-            transition: opacity 0.3s ease-out;
-        }
-
-        #loading-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-content {
-            text-align: center;
-        }
-
-        .loading-title {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--masthead);
-            letter-spacing: 0.05em;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--border-col);
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
+    <!DOCTYPE html>
+    <html lang="ja">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="theme-color" content="#EEEEEE">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <link rel="manifest" href="manifest.webmanifest">
+        <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            href="https://fonts.googleapis.com/css2?family=BIZ+UDMincho&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Yuji+Syuku&display=block"
+            rel="stylesheet">
+
+        <style>
+            :root {
+                --ui-bg: #DDDDDD;
+                --panel-bg: #FFFFFF;
+                --border-col: #DDDDDD;
+                --primary: #333333;
+                --accent: #333333;
+                --masthead: #161616;
+                --link-col: #333333;
+                --text: #333333;
             }
 
-            100% {
-                transform: rotate(360deg);
+            body {
+                margin: 0;
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                font-family: "Noto Sans JP", sans-serif;
+                background: var(--ui-bg);
+                color: var(--text);
+                user-select: none;
+                -webkit-user-select: none;
+                touch-action: none;
             }
-        }
 
-        .loading-text {
-            font-size: 16px;
-            color: var(--text);
-            margin-bottom: 10px;
-            font-weight: 500;
-        }
+            /* 左サイドバー */
+            .toolbar {
+                width: 50px;
+                height: 100vh;
+                position: sticky;
+                top: 0;
+                background: var(--panel-bg);
+                border-right: 1px solid var(--border-col);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 0;
+                z-index: 100;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
 
-        .loading-subtext {
-            font-size: 12px;
-            color: #999;
-        }
+            .toolbar::-webkit-scrollbar {
+                width: 4px;
+            }
 
-        /* オートセーブインジケーター */
-        #autosave-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 8px 12px;
-            background: #333333;
-            color: #FFFFFF;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
+            .toolbar::-webkit-scrollbar-thumb {
+                background: var(--border-col);
+                border-radius: 2px;
+            }
 
-        #autosave-indicator.show {
-            opacity: 1;
-        }
+            .tool-btn {
+                width: 50px;
+                height: 50px;
+                margin-bottom: 8px;
+                border: 1px solid var(--border-col);
+                background: var(--panel-bg);
+                cursor: pointer;
+                border-radius: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 2px;
+                font-size: 18px;
+                transition: background 0.2s;
+                position: relative;
+                filter: grayscale(100%);
+            }
 
-        #autosave-indicator.error {
-            background: #161616;
-        }
+            .tool-btn:hover {
+                background: var(--ui-bg);
+            }
 
-        .autosave-icon {
-            width: 14px;
-            height: 14px;
-            animation: rotate 1s linear infinite;
-        }
+            .tool-btn.active {
+                background: var(--primary);
+                color: #fff;
+                border-color: var(--primary);
+                filter: grayscale(0%);
+            }
 
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+            .tool-btn.active.btn-heading {
+                background: var(--accent);
+                border-color: var(--accent);
+            }
 
-        /* 右上の操作ボタングループ（ツールバーの右隣） */
-        .top-right-controls {
-            position: fixed;
-            top: 10px;
-            left: 70px; /* ツールバー(50px) + 余白(20px) */
-            display: flex;
-            gap: 8px;
-            z-index: 10000;
-        }
+            .tool-btn.active.btn-masthead {
+                background: var(--masthead);
+                border-color: var(--masthead);
+            }
 
-        .control-btn {
-            padding: 8px 16px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-col);
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            user-select: none;
-        }
+            .tool-label {
+                font-size: 8px;
+                line-height: 1;
+                font-weight: 500;
+            }
 
-        .control-btn:hover {
-            background: var(--ui-bg);
-        }
+            /* メインエリア */
+            .viewport {
+                flex: 1;
+                position: relative;
+                overflow: hidden;
+                background: var(--ui-bg);
+                background-image: none;
+                background-size: 20px 20px;
+                cursor: default;
+                touch-action: none;
+            }
 
-        .control-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
+            .viewport.mode-create {
+                cursor: crosshair;
+            }
 
-        .control-btn.ipad-mode-active {
-            background: #4CAF50;
-            color: white;
-            border-color: #4CAF50;
-        }
+            .viewport.mode-hand {
+                cursor: grab;
+            }
 
-        .control-btn.ipad-mode-active:hover {
-            background: #45a049;
-        }
-    </style>
-</head>
+            .viewport.mode-hand:active {
+                cursor: grabbing;
+            }
+
+            /* SVG用紙コンテナ */
+            #canvas-container {
+                transform-origin: 0 0;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            /* SVG用紙 */
+            #main-svg {
+                background: transparent;
+                display: block;
+                shape-rendering: geometricPrecision;
+                text-rendering: geometricPrecision;
+                overflow: visible;
+            }
+
+            /* 右サイドバー */
+            .properties {
+                width: 280px;
+                background: var(--panel-bg);
+                border-left: 1px solid var(--border-col);
+                padding: 15px;
+                box-sizing: border-box;
+                overflow-y: auto;
+                z-index: 100;
+            }
+
+            .prop-group {
+                margin-bottom: 20px;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 15px;
+            }
+
+            .prop-group:last-child {
+                border-bottom: none;
+            }
+
+            .prop-label {
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 5px;
+                display: block;
+                color: #555;
+            }
+
+            .prop-row {
+                display: flex;
+                gap: 5px;
+                margin-bottom: 8px;
+                align-items: center;
+            }
+
+            .prop-input,
+            .prop-select,
+            .prop-textarea {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 6px;
+                border: 1px solid var(--border-col);
+                margin-bottom: 8px;
+                font-size: 14px;
+                font-family: inherit;
+                user-select: text;
+                -webkit-user-select: text;
+            }
+
+            .prop-textarea {
+                resize: vertical;
+                min-height: 100px;
+            }
+
+            /* スライダー */
+            input[type=range] {
+                -webkit-appearance: none;
+                background: transparent;
+                margin: 0;
+                vertical-align: middle;
+                cursor: pointer;
+            }
+
+            input[type=range]:focus {
+                outline: none;
+            }
+
+            input[type=range]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                height: 16px;
+                width: 16px;
+                border-radius: 50%;
+                background: var(--primary);
+                cursor: pointer;
+                margin-top: -6px;
+                border: 2px solid #fff;
+            }
+
+            input[type=range]::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 4px;
+                background: #e0e0e0;
+                border-radius: 2px;
+            }
+
+            .heading-slider::-webkit-slider-thumb {
+                background: var(--accent);
+            }
+
+            .masthead-slider::-webkit-slider-thumb {
+                background: var(--masthead);
+            }
+
+            .btn-primary {
+                width: 100%;
+                padding: 8px;
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            .btn-primary:hover {
+                opacity: 0.9;
+            }
+
+            .btn-delete {
+                background: #e53935;
+                margin-top: 20px;
+            }
+
+            .btn-secondary {
+                flex: 1;
+                padding: 6px;
+                background: #f0f0f0;
+                color: #333;
+                border: 1px solid var(--border-col);
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                text-align: center;
+            }
+
+            .btn-secondary:hover {
+                background: #e0e0e0;
+            }
+
+            /* UIスタイル */
+            .selection-rect {
+                fill: none;
+                stroke: var(--primary);
+                stroke-width: 2px;
+                stroke-dasharray: 4 2;
+                pointer-events: none;
+                vector-effect: non-scaling-stroke;
+            }
+
+            .selection-rect.heading-select {
+                stroke: var(--accent);
+            }
+
+            .selection-rect.masthead-select {
+                stroke: var(--masthead);
+            }
+
+            .creation-preview-rect {
+                fill: rgba(33, 150, 243, 0.2);
+                stroke: var(--primary);
+                stroke-width: 1px;
+                stroke-dasharray: 4 2;
+                pointer-events: none;
+                vector-effect: non-scaling-stroke;
+            }
+
+            /* ハンドル */
+            .handle-group {
+                cursor: pointer;
+            }
+
+            .resize-handle-visual {
+                fill: white;
+                stroke: var(--primary);
+                stroke-width: 2px;
+                vector-effect: non-scaling-stroke;
+                pointer-events: none;
+            }
+
+            .resize-handle-hit {
+                fill: #ffffff;
+                fill-opacity: 0;
+                cursor: pointer;
+                pointer-events: all;
+            }
+
+            .handle-group:hover .resize-handle-visual {
+                fill: var(--primary);
+            }
+
+            .handle-group.heading-handle .resize-handle-visual {
+                stroke: var(--accent);
+            }
+
+            .handle-group.heading-handle:hover .resize-handle-visual {
+                fill: var(--accent);
+            }
+
+            .handle-group.masthead-handle .resize-handle-visual {
+                stroke: var(--masthead);
+            }
+
+            .handle-group.masthead-handle:hover .resize-handle-visual {
+                fill: var(--masthead);
+            }
+
+            /* リンクハンドル (四角) */
+            .link-handle-rect {
+                fill: #fff;
+                stroke: var(--link-col);
+                stroke-width: 2px;
+                cursor: pointer;
+                vector-effect: non-scaling-stroke;
+            }
+
+            .link-handle-rect.connected {
+                fill: var(--link-col);
+            }
+
+            .link-handle-hit {
+                fill: transparent;
+                cursor: pointer;
+                pointer-events: all;
+            }
+
+            .link-line-preview {
+                stroke: var(--link-col);
+                stroke-width: 2px;
+                stroke-dasharray: 4 2;
+                fill: none;
+                pointer-events: none;
+            }
+
+            .cursor-nw {
+                cursor: nw-resize;
+            }
+
+            .cursor-ne {
+                cursor: ne-resize;
+            }
+
+            .cursor-sw {
+                cursor: sw-resize;
+            }
+
+            .cursor-se {
+                cursor: se-resize;
+            }
+
+            .margin-guide {
+                fill: none;
+                stroke: #00bcd4;
+                stroke-width: 1px;
+                stroke-dasharray: 5 5;
+                pointer-events: none;
+                vector-effect: non-scaling-stroke;
+            }
+
+            /* 選択モードは通常のカーソル */
+            .viewport.mode-select {
+                cursor: default;
+            }
+
+            text {
+                user-select: none;
+                pointer-events: none;
+            }
+
+            .grid-line,
+            .grid-rect {
+                stroke: #b3e5fc;
+                stroke-width: 0.5px;
+                fill: none;
+                pointer-events: none;
+                vector-effect: non-scaling-stroke;
+            }
+
+            .hit-rect {
+                fill: #ffffff;
+                fill-opacity: 0;
+                cursor: move;
+                pointer-events: all;
+            }
+
+            /* 色制御用クラス */
+            .ink-fill {
+                fill: #333;
+            }
+
+            .ink-stroke {
+                stroke: #333;
+            }
+
+            .paper-fill {
+                fill: #fff;
+            }
+
+            .paper-stroke {
+                stroke: #fff;
+            }
+
+            /* リンク接続候補（ドラッグ開始時に枠線だけ表示） */
+            .link-candidate .hit-rect {
+                stroke: var(--link-col);
+                stroke-width: 2px;
+                stroke-dasharray: 4 4;
+                fill: none;
+                /* 塗りつぶしなし */
+            }
+
+            /* リンク接続対象（ホバー時・強調） */
+            .highlight-target .hit-rect {
+                stroke: var(--link-col);
+                stroke-width: 3px;
+                stroke-dasharray: 4 4;
+                fill: rgba(156, 39, 176, 0.2) !important;
+                fill-opacity: 1 !important;
+            }
+
+            /* 自由テキスト揃え位置ボタン */
+            .align-btn-group {
+                display: flex;
+                gap: 6px;
+                flex-wrap: nowrap;
+                margin-bottom: 8px;
+                justify-content: space-between;
+            }
+
+            /* 3x3グリッド配置ボタン */
+            .align-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+
+            .align-grid-btn {
+                aspect-ratio: 1;
+                border: 1px solid #666;
+                background: #fff;
+                cursor: pointer;
+                border-radius: 3px;
+                padding: 0;
+                min-height: 32px;
+                transition: all 0.2s;
+            }
+
+            .align-grid-btn:hover {
+                background: #f0f0f0;
+                border-color: #333;
+            }
+
+            .align-grid-btn.active {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #fff;
+            }
+
+            #freetext-align-cross.direction-vertical {
+                flex-direction: row-reverse;
+            }
+
+            .align-btn {
+                flex: 1;
+                min-width: 80px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                padding: 8px 6px;
+                font-size: 12px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                transition: 0.2s;
+            }
+
+            .align-btn span {
+                line-height: 1;
+            }
+
+            .align-btn:hover {
+                background: #f0f0f0;
+            }
+
+            .align-btn--active {
+                background: var(--primary);
+                color: #fff;
+                border-color: var(--primary);
+            }
+
+            .color-toggle-row {
+                display: flex;
+                gap: 8px;
+            }
+
+            .color-toggle-btn {
+                flex: 1;
+                padding: 6px 0;
+                border: 1px solid var(--border-col);
+                background: #fff;
+                font-size: 12px;
+                cursor: pointer;
+                transition: background 0.2s, border-color 0.2s;
+            }
+
+            .color-toggle-btn.active {
+                background: var(--primary);
+                color: #fff;
+                border-color: var(--primary);
+            }
+
+            .align-btn .label-vertical,
+            .align-btn .label-horizontal {
+                display: none;
+            }
+
+            .align-btn-group.direction-vertical .label-vertical {
+                display: inline;
+            }
+
+            .align-btn-group.direction-horizontal .label-horizontal {
+                display: inline;
+            }
+
+            /* ローディング画面 */
+            #loading-screen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: var(--ui-bg);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 10001;
+                transition: opacity 0.3s ease-out;
+            }
+
+            #loading-screen.hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .loading-content {
+                text-align: center;
+            }
+
+            .loading-title {
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 16px;
+                color: var(--masthead);
+                letter-spacing: 0.05em;
+            }
+
+            .loading-spinner {
+                width: 60px;
+                height: 60px;
+                border: 4px solid var(--border-col);
+                border-top: 4px solid var(--primary);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .loading-text {
+                font-size: 16px;
+                color: var(--text);
+                margin-bottom: 10px;
+                font-weight: 500;
+            }
+
+            .loading-subtext {
+                font-size: 12px;
+                color: #999;
+            }
+
+            /* オートセーブインジケーター */
+            #autosave-indicator {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                background: #333333;
+                color: #FFFFFF;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+            }
+
+            #autosave-indicator.show {
+                opacity: 1;
+            }
+
+            #autosave-indicator.error {
+                background: #161616;
+            }
+
+            .autosave-icon {
+                width: 14px;
+                height: 14px;
+                animation: rotate 1s linear infinite;
+            }
+
+            @keyframes rotate {
+                from {
+                    transform: rotate(0deg);
+                }
+
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* 右上の操作ボタングループ（ツールバーの右隣） */
+            .top-right-controls {
+                position: fixed;
+                top: 10px;
+                left: 70px;
+                /* ツールバー(50px) + 余白(20px) */
+                display: flex;
+                gap: 8px;
+                z-index: 10000;
+            }
+
+            .control-btn {
+                padding: 8px 16px;
+                background: var(--panel-bg);
+                border: 1px solid var(--border-col);
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                user-select: none;
+            }
+
+            .control-btn:hover {
+                background: var(--ui-bg);
+            }
+
+            .control-btn:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+            }
+
+            .control-btn.ipad-mode-active {
+                background: #4CAF50;
+                color: white;
+                border-color: #4CAF50;
+            }
+
+            .control-btn.ipad-mode-active:hover {
+                background: #45a049;
+            }
+        </style>
+    </head>
 
 <body>
 
     <!-- オートセーブインジケーター -->
     <div id="autosave-indicator">
         <svg class="autosave-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            <path d="M9 12l2 2 4-4"/>
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path d="M9 12l2 2 4-4" />
         </svg>
         <span id="autosave-text">保存中...</span>
     </div>
@@ -762,7 +779,8 @@
         <button class="tool-btn" id="btn-image" title="画像 (I)" onclick="setMode('image')">🖼<span
                 class="tool-label">画像</span></button>
         <div style="flex:1"></div>
-        <button class="tool-btn" onclick="exportCanvas()" title="画像として書き出し">📤<span class="tool-label">書出</span></button>
+        <button class="tool-btn" onclick="exportCanvas()" title="画像として書き出し">📤<span
+                class="tool-label">書出</span></button>
         <button class="tool-btn" onclick="newProject()" title="新規作成">📄<span class="tool-label">新規</span></button>
         <button class="tool-btn" onclick="openProjectFile()" title="開く">📂<span class="tool-label">開く</span></button>
         <button class="tool-btn" onclick="saveProject()" title="保存">💾<span class="tool-label">保存</span></button>
@@ -840,22 +858,27 @@
             </div>
 
             <div class="prop-label" style="margin-top:15px;">余白 (mm)</div>
-            <div style="background:#f9f9f9; padding:10px; border-radius:4px; border:1px solid #eee; margin-bottom:10px;">
+            <div
+                style="background:#f9f9f9; padding:10px; border-radius:4px; border:1px solid #eee; margin-bottom:10px;">
                 <div class="prop-row">
                     <span style="font-size:11px; flex:1;">上</span>
-                    <input type="number" id="inp-margin-t" class="prop-input" style="flex:0.6" value="20" oninput="updateCanvasSize()">
+                    <input type="number" id="inp-margin-t" class="prop-input" style="flex:0.6" value="20"
+                        oninput="updateCanvasSize()">
                 </div>
                 <div class="prop-row">
                     <span style="font-size:11px; flex:1;">下</span>
-                    <input type="number" id="inp-margin-b" class="prop-input" style="flex:0.6" value="20" oninput="updateCanvasSize()">
+                    <input type="number" id="inp-margin-b" class="prop-input" style="flex:0.6" value="20"
+                        oninput="updateCanvasSize()">
                 </div>
                 <div class="prop-row">
                     <span style="font-size:11px; flex:1;">左</span>
-                    <input type="number" id="inp-margin-l" class="prop-input" style="flex:0.6" value="20" oninput="updateCanvasSize()">
+                    <input type="number" id="inp-margin-l" class="prop-input" style="flex:0.6" value="20"
+                        oninput="updateCanvasSize()">
                 </div>
                 <div class="prop-row">
                     <span style="font-size:11px; flex:1;">右</span>
-                    <input type="number" id="inp-margin-r" class="prop-input" style="flex:0.6" value="20" oninput="updateCanvasSize()">
+                    <input type="number" id="inp-margin-r" class="prop-input" style="flex:0.6" value="20"
+                        oninput="updateCanvasSize()">
                 </div>
             </div>
 
@@ -1110,8 +1133,8 @@
                 <span style="font-size:11px; flex:1;">文字縁取り</span>
                 <input type="range" id="inp-masthead-ts-slider" class="masthead-slider" min="0" max="4" step="0.5"
                     value="2" oninput="updateMastheadProp('textStrokeWidth', this.value)" style="flex:1.5;">
-                <input type="number" id="inp-masthead-ts" class="prop-input" style="flex:0.8;" min="0" max="4" step="0.5" value="2"
-                    onchange="updateMastheadProp('textStrokeWidth', this.value)">
+                <input type="number" id="inp-masthead-ts" class="prop-input" style="flex:0.8;" min="0" max="4"
+                    step="0.5" value="2" onchange="updateMastheadProp('textStrokeWidth', this.value)">
             </div>
 
             <div class="prop-label">余白設定 (mm)</div>
@@ -1249,23 +1272,32 @@
             <div class="prop-label" style="margin-top:10px;">配置</div>
             <div class="align-grid" id="freetext-align-grid">
                 <!-- 左上 -->
-                <button type="button" class="align-grid-btn" data-align="top-left" onclick="setFreetextAlign('top-left')">■</button>
+                <button type="button" class="align-grid-btn" data-align="top-left"
+                    onclick="setFreetextAlign('top-left')">■</button>
                 <!-- 中上 -->
-                <button type="button" class="align-grid-btn" data-align="top-center" onclick="setFreetextAlign('top-center')">■</button>
+                <button type="button" class="align-grid-btn" data-align="top-center"
+                    onclick="setFreetextAlign('top-center')">■</button>
                 <!-- 右上 -->
-                <button type="button" class="align-grid-btn" data-align="top-right" onclick="setFreetextAlign('top-right')">■</button>
+                <button type="button" class="align-grid-btn" data-align="top-right"
+                    onclick="setFreetextAlign('top-right')">■</button>
                 <!-- 左中 -->
-                <button type="button" class="align-grid-btn" data-align="middle-left" onclick="setFreetextAlign('middle-left')">■</button>
+                <button type="button" class="align-grid-btn" data-align="middle-left"
+                    onclick="setFreetextAlign('middle-left')">■</button>
                 <!-- 中央 -->
-                <button type="button" class="align-grid-btn" data-align="middle-center" onclick="setFreetextAlign('middle-center')">■</button>
+                <button type="button" class="align-grid-btn" data-align="middle-center"
+                    onclick="setFreetextAlign('middle-center')">■</button>
                 <!-- 右中 -->
-                <button type="button" class="align-grid-btn" data-align="middle-right" onclick="setFreetextAlign('middle-right')">■</button>
+                <button type="button" class="align-grid-btn" data-align="middle-right"
+                    onclick="setFreetextAlign('middle-right')">■</button>
                 <!-- 左下 -->
-                <button type="button" class="align-grid-btn" data-align="bottom-left" onclick="setFreetextAlign('bottom-left')">■</button>
+                <button type="button" class="align-grid-btn" data-align="bottom-left"
+                    onclick="setFreetextAlign('bottom-left')">■</button>
                 <!-- 中下 -->
-                <button type="button" class="align-grid-btn" data-align="bottom-center" onclick="setFreetextAlign('bottom-center')">■</button>
+                <button type="button" class="align-grid-btn" data-align="bottom-center"
+                    onclick="setFreetextAlign('bottom-center')">■</button>
                 <!-- 右下 -->
-                <button type="button" class="align-grid-btn" data-align="bottom-right" onclick="setFreetextAlign('bottom-right')">■</button>
+                <button type="button" class="align-grid-btn" data-align="bottom-right"
+                    onclick="setFreetextAlign('bottom-right')">■</button>
             </div>
             <div id="freetext-align-hint" style="font-size:11px; color:#666; margin-top:4px;">
                 ボタンの位置 = テキストの配置位置
@@ -1360,7 +1392,7 @@
             if (typeof value !== 'string') return LEADING_FULLWIDTH_SPACE;
             return value.split('\n').map(line => ensureLeadingFullwidthSpace(line)).join('\n');
         }
-    
+
         function normalizeTextElements(list) {
             if (!Array.isArray(list)) return;
             list.forEach(el => {
@@ -1369,7 +1401,7 @@
                 }
             });
         }
-    
+
         function enforceTextareaLeadingSpace(textarea) {
             if (!textarea) return ensureLeadingFullwidthSpacePerLine("");
             const rawValue = textarea.value || "";
@@ -3752,7 +3784,7 @@
                     // 上下 (justify-content)
                     const vPosMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
                     div.style.justifyContent = vPosMap[vAlign] || 'flex-start';
-                    
+
                     // 左右 (align-items) - 縦書きでは flex-end が左揃えになる
                     const hPosMap = { left: 'flex-end', center: 'center', right: 'flex-start' };
                     div.style.alignItems = hPosMap[hAlign] || 'flex-start';
@@ -5612,7 +5644,7 @@
                 if (!project || !project.version) {
                     throw new Error('Invalid project data structure');
                 }
-                
+
                 const timestamp = project.timestamp ? new Date(project.timestamp).toLocaleString('ja-JP') : '不明';
                 if (!confirm(`自動保存されたデータがあります。\n保存日時: ${timestamp}\n\n復元しますか？`)) {
                     return false;
@@ -5645,18 +5677,18 @@
                 STATE.history = [];
                 STATE.historyIndex = -1;
                 saveHistory();
-                
+
                 alert("自動保存データを復元しました。");
                 return true;
 
             } catch (e) {
                 console.error('自動保存データの読み込みに失敗:', e);
-                
+
                 localStorage.setItem(BROKEN_AUTOSAVE_KEY, json);
                 localStorage.removeItem(AUTOSAVE_KEY);
-                
+
                 alert('自動保存データが破損していたため読み込めませんでした。\n破損したデータはバックアップされました。\n新しいプロジェクトとして開始します。');
-                
+
                 return false;
             }
         }
@@ -5701,7 +5733,7 @@
 
             // iPad検出
             const isIpad = /iPad/i.test(ua) ||
-                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
             // iPhone検出
             const isIphone = /iPhone/i.test(ua);
@@ -5898,10 +5930,10 @@
                 STATE.header = project.header;
                 STATE.articleSnapMode = project.articleSnapMode !== undefined ? project.articleSnapMode : true;
                 STATE.elements = project.elements;
-                
+
                 normalizeTextElements(STATE.elements);
                 updateUiFromState(); // この関数は後で追加される想定
-                
+
                 STATE.selectedId = null;
                 updateCanvasSize();
                 updateGridSettings();
@@ -5912,7 +5944,7 @@
                 document.getElementById('layer-ui').innerHTML = '';
                 STATE.elements.forEach(data => renderElement(data));
                 renderDanLines();
-                
+
                 STATE.history = [];
                 STATE.historyIndex = -1;
                 saveHistory();
