@@ -76,7 +76,7 @@
         .tool-btn {
             width: 50px;
             height: 50px;
-            margin-bottom: 4px;
+            margin-bottom: 0;
             border: 1px solid var(--border-col);
             background: var(--panel-bg);
             cursor: pointer;
@@ -1377,6 +1377,7 @@
         const layerContent = document.getElementById('layer-content');
         const layerUi = document.getElementById('layer-ui');
         const svgStyle = document.getElementById('svg-style');
+        let embeddedFontCss = '';
 
         function ensureLeadingFullwidthSpace(value) {
             if (typeof value !== 'string' || value.trim() === '') {
@@ -5014,7 +5015,9 @@
                 // 動的なスタイル（色など）をインラインで埋め込む
                 const inkC = STATE.canvas.colors.ink;
                 const paperC = STATE.canvas.colors.paper;
+                const fontFaceCss = embeddedFontCss ? `\n${embeddedFontCss}\n` : '';
                 const dynamicCss = `
+                ${fontFaceCss}
                 .ink-fill { fill: ${inkC} !important; }
                 .ink-stroke { stroke: ${inkC} !important; }
                 .paper-fill { fill: ${paperC} !important; }
@@ -5126,6 +5129,7 @@
                     // 既存のスタイルに追記する
                     loadingSubtext.textContent = 'フォントを埋め込んでいます';
                     svgStyle.textContent += '\n' + embeddedCss;
+                    embeddedFontCss = embeddedCss;
                 }
 
                 // フォントの準備ができた後に要素をレンダリング
