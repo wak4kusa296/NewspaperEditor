@@ -3589,12 +3589,10 @@
                         const textStrokeWidth = (data.textStrokeWidth !== undefined ? data.textStrokeWidth : 2) * PX_PER_MM;
                         if (textStrokeWidth > 0) {
                             textEl.setAttribute('paint-order', 'stroke');
-                            if (data.inverted) {
-                                const inkColor = STATE.canvas.colors?.ink || '#333333';
-                                textEl.setAttribute('stroke', inkColor);
-                            } else {
-                                textEl.setAttribute('stroke', '#fff');
-                            }
+                            const inkColor = STATE.canvas.colors?.ink || '#333333';
+                            const paperColor = STATE.canvas.colors?.paper || '#ffffff';
+                            const strokeColor = data.inverted ? inkColor : paperColor;
+                            textEl.setAttribute('stroke', strokeColor);
                             textEl.setAttribute('stroke-width', textStrokeWidth);
                         }
 
